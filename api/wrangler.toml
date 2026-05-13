@@ -1,0 +1,10 @@
+name = "swimbuddy-api"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "swimbuddy-db"
+database_id = "3225990c-261e-44a2-bc23-f1e5df7264d9"
+migrations_dir = "src/db/migrations"

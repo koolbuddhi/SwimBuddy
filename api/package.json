@@ -8,5 +8,16 @@
     "migrate": "wrangler d1 migrations apply swimbuddy-db",
     "migrate:local": "wrangler d1 migrations apply swimbuddy-db --local",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cloudflare/workers-types": "^4.20260511.1",
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.12.18"
+  },
+  "devDependencies": {
+    "@types/node": "^25.7.0",
+    "drizzle-kit": "^0.31.10",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.90.1"
   }
 }
