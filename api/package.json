@@ -1,0 +1,12 @@
+{
+  "name": "swimbuddy-api",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "migrate": "wrangler d1 migrations apply swimbuddy-db",
+    "migrate:local": "wrangler d1 migrations apply swimbuddy-db --local",
+    "typecheck": "tsc --noEmit"
+  }
+}

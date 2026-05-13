@@ -1,0 +1,912 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, ChevronLeft, Trash2, Edit2, Check, X, Waves, MoreVertical, ChevronDown, ChevronRight } from 'lucide-react';
+
+// ============ Constants ============
+const STROKES = [
+  { id: 'fly',    name: 'Butterfly',    short: 'Fly',    color: '#f59e0b' },
+  { id: 'back',   name: 'Backstroke',   short: 'Back',   color: '#10b981' },
+  { id: 'breast', name: 'Breaststroke', short: 'Breast', color: '#8b5cf6' },
+  { id: 'free',   name: 'Freestyle',    short: 'Free',   color: '#3b82f6' },
+  { id: 'mixed',  name: 'Mixed',        short: 'Mix',    color: '#64748b' },
+];
+const DISTANCES = [5, 15, 25, 50];
+
+// ============ Time utils ============
+const formatTimeInput = (digits) => {
+  const padded = (digits || '0').padStart(6, '0').slice(-6);
+  return `${padded.slice(0,2)}:${padded.slice(2,4)}.${padded.slice(4,6)}`;
+};
+const csToTime = (cs) => {
+  const mm = Math.floor(cs / 6000);
+  const ss = Math.floor((cs % 6000) / 100);
+  const c  = cs % 100;
+  return `${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}.${String(c).padStart(2,'0')}`;
+};
+const formatDate = (iso) => new Date(iso).toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric' });
+const formatDateLong = (iso) => new Date(iso).toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
+const isToday = (iso) => new Date(iso).toDateString() === new Date().toDateString();
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
+// ============ Seed data ============
+const seedData = () => {
+  const today = new Date();
+  const dayOffset = (n) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() - n);
+    return d.toISOString().slice(0, 10);
+  };
+  return [
+    {
+      id: 's1', date: dayOffset(0), notes: '',
+      drills: [
+        { id: 'd1', strokeId: 'fly',    distance: 25, timeCs: 1845, label: '' },
+        { id: 'd2', strokeId: 'back',   distance: 25, timeCs: 2210, label: '' },
+        { id: 'd3', strokeId: 'breast', distance: 25, timeCs: 2540, label: '' },
+        { id: 'd4', strokeId: 'free',   distance: 25, timeCs: 1620, label: '' },
+        { id: 'd8', strokeId: 'free',   distance: 50, timeCs: 3920, label: 'cooldown' },
+      ],
+      groups: [{ id: 'g1', name: 'IM Attempt 1', drillIds: ['d1','d2','d3','d4'] }],
+    },
+    {
+      id: 's2', date: dayOffset(2), notes: '',
+      drills: [
+        { id: 'd5', strokeId: 'free', distance: 50, timeCs: 3845, label: 'first try' },
+        { id: 'd6', strokeId: 'free', distance: 50, timeCs: 3720, label: 'second try' },
+        { id: 'd7', strokeId: 'mixed', distance: 15, timeCs: 1120, label: '15+5+5+15' },
+      ],
+      groups: [],
+    },
+  ];
+};
+
+export default function SwimbuddyApp() {
+  const [sessions, setSessions] = useState(seedData);
+  const [view, setView] = useState({ name: 'home' });
+
+  const createSession = () => {
+    const id = Date.now().toString();
+    setSessions([{ id, date: todayISO(), drills: [], groups: [], notes: '' }, ...sessions]);
+    setView({ name: 'session', id });
+  };
+  const updateSession = (id, updater) => {
+    setSessions(sessions.map(s => s.id === id ? updater(s) : s));
+  };
+  const deleteSession = (id) => {
+    setSessions(sessions.filter(s => s.id !== id));
+    setView({ name: 'home' });
+  };
+
+  const currentSession = view.name === 'session' ? sessions.find(s => s.id === view.id) : null;
+
+  return (
+    <div style={S.appShell}>
+      <div style={S.phoneFrame}>
+        <div style={S.statusBar}>
+          <span>9:41</span>
+          <span style={{ display:'flex', gap:6, alignItems:'center' }}>
+            <span style={{ fontSize: 10 }}>●●●●</span>
+            <span>100%</span>
+          </span>
+        </div>
+        <div style={S.appContent}>
+          {view.name === 'home' && (
+            <HomeScreen
+              sessions={sessions}
+              onOpenSession={(id) => setView({ name: 'session', id })}
+              onNewSession={createSession}
+            />
+          )}
+          {view.name === 'session' && currentSession && (
+            <SessionScreen
+              session={currentSession}
+              onBack={() => setView({ name: 'home' })}
+              onUpdate={(updater) => updateSession(view.id, updater)}
+              onDelete={() => deleteSession(view.id)}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HomeScreen({ sessions, onOpenSession, onNewSession }) {
+  return (
+    <>
+      <div style={S.header}>
+        <div style={{ display:'flex', alignItems:'center', gap:10, flex:1 }}>
+          <div style={S.logoIcon}><Waves size={20} color="#fff" /></div>
+          <div>
+            <div style={S.appTitle}>Swimbuddy</div>
+            <div style={S.appSubtitle}>Practice log</div>
+          </div>
+        </div>
+      </div>
+      <div style={S.scrollArea}>
+        {sessions.length === 0 ? (
+          <div style={S.emptyState}>
+            <div style={{ fontSize: 56, marginBottom: 12 }}>🏊‍♀️</div>
+            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 6, color: '#0f172a' }}>No sessions yet</div>
+            <div style={{ fontSize: 13, color: '#64748b', textAlign:'center', maxWidth: 240 }}>
+              Tap the + button to start logging your first practice session.
+            </div>
+          </div>
+        ) : (
+          <div style={{ padding: 16, display:'flex', flexDirection:'column', gap: 10 }}>
+            <div style={S.sectionLabel}>
+              {sessions.length} session{sessions.length !== 1 ? 's' : ''}
+            </div>
+            {sessions.map(s => <SessionCard key={s.id} session={s} onClick={() => onOpenSession(s.id)} />)}
+          </div>
+        )}
+      </div>
+      <button style={S.fab} onClick={onNewSession} aria-label="New session">
+        <Plus size={26} color="#fff" />
+      </button>
+    </>
+  );
+}
+
+function SessionCard({ session, onClick }) {
+  const drillCount = session.drills.length;
+  const groupCount = session.groups.length;
+  const totalCs = session.drills.reduce((sum, d) => sum + d.timeCs, 0);
+  const bestGroup = session.groups.length > 0
+    ? session.groups.reduce((best, g) => {
+        const total = g.drillIds.reduce((s, did) => {
+          const drill = session.drills.find(d => d.id === did);
+          return s + (drill?.timeCs || 0);
+        }, 0);
+        return !best || total < best.total ? { ...g, total } : best;
+      }, null)
+    : null;
+
+  return (
+    <button style={S.sessionCard} onClick={onClick}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+        <div style={{ textAlign:'left' }}>
+          <div style={S.sessionDate}>{isToday(session.date) ? 'Today' : formatDate(session.date)}</div>
+          <div style={S.sessionMeta}>
+            {drillCount} drill{drillCount !== 1 ? 's' : ''}
+            {groupCount > 0 && ` · ${groupCount} group${groupCount !== 1 ? 's' : ''}`}
+          </div>
+        </div>
+        {drillCount > 0 && (
+          <div style={{ textAlign:'right' }}>
+            <div style={S.sessionTotalLabel}>Total</div>
+            <div style={S.sessionTotal}>{csToTime(totalCs)}</div>
+          </div>
+        )}
+      </div>
+      {bestGroup && (
+        <div style={S.bestGroupRow}>
+          <span style={{ fontSize: 11, color:'#0e7490', fontWeight: 700 }}>★ {bestGroup.name}</span>
+          <span style={{ fontSize: 13, color:'#0e7490', fontWeight: 700, fontVariantNumeric:'tabular-nums' }}>
+            {csToTime(bestGroup.total)}
+          </span>
+        </div>
+      )}
+    </button>
+  );
+}
+
+function SessionScreen({ session, onBack, onUpdate, onDelete }) {
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [showAddDrill, setShowAddDrill] = useState(false);
+  const [editingDrill, setEditingDrill] = useState(null);
+  const [savingGroup, setSavingGroup] = useState(false);
+  const [groupName, setGroupName] = useState('');
+  const [showMenu, setShowMenu] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState({});
+
+  // Compute groupings - each drill belongs to at most one group
+  const drillToGroup = {};
+  session.groups.forEach(g => g.drillIds.forEach(did => { drillToGroup[did] = g.id; }));
+  const ungroupedDrills = session.drills.filter(d => !drillToGroup[d.id]);
+  const groupsWithDrills = session.groups.map(g => ({
+    ...g,
+    drills: g.drillIds.map(did => session.drills.find(d => d.id === did)).filter(Boolean),
+    total: g.drillIds.reduce((s, did) => s + (session.drills.find(d => d.id === did)?.timeCs || 0), 0),
+  }));
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+  const clearSelection = () => setSelectedIds([]);
+  const selectionSum = session.drills.filter(d => selectedIds.includes(d.id)).reduce((s,d) => s + d.timeCs, 0);
+
+  const toggleCollapse = (gid) => setCollapsedGroups(prev => ({ ...prev, [gid]: !prev[gid] }));
+
+  const addDrill = (drill) => {
+    onUpdate(s => ({ ...s, drills: [...s.drills, { ...drill, id: Date.now().toString() }] }));
+    setShowAddDrill(false);
+  };
+  const updateDrill = (id, patch) => {
+    onUpdate(s => ({ ...s, drills: s.drills.map(d => d.id === id ? { ...d, ...patch } : d) }));
+    setEditingDrill(null);
+  };
+  const removeDrill = (id) => {
+    onUpdate(s => ({
+      ...s,
+      drills: s.drills.filter(d => d.id !== id),
+      groups: s.groups
+        .map(g => ({ ...g, drillIds: g.drillIds.filter(did => did !== id) }))
+        .filter(g => g.drillIds.length > 0),
+    }));
+    setSelectedIds(prev => prev.filter(x => x !== id));
+  };
+  const removeDrillFromGroup = (drillId) => {
+    onUpdate(s => ({
+      ...s,
+      groups: s.groups
+        .map(g => ({ ...g, drillIds: g.drillIds.filter(did => did !== drillId) }))
+        .filter(g => g.drillIds.length > 0),
+    }));
+  };
+  const saveAsGroup = () => {
+    if (!groupName.trim() || selectedIds.length < 2) return;
+    onUpdate(s => ({ ...s, groups: [...s.groups, {
+      id: Date.now().toString(), name: groupName.trim(), drillIds: [...selectedIds]
+    }] }));
+    setSavingGroup(false); setGroupName(''); clearSelection();
+  };
+  const ungroupGroup = (gid) => onUpdate(s => ({ ...s, groups: s.groups.filter(g => g.id !== gid) }));
+
+  return (
+    <>
+      <div style={S.header}>
+        <button style={S.iconBtn} onClick={onBack}><ChevronLeft size={22} color="#0f172a" /></button>
+        <div style={{ flex:1, textAlign:'center' }}>
+          <div style={S.headerKicker}>{isToday(session.date) ? 'TODAY' : 'SESSION'}</div>
+          <div style={S.headerTitle}>{formatDateLong(session.date)}</div>
+        </div>
+        <button style={S.iconBtn} onClick={() => setShowMenu(!showMenu)}>
+          <MoreVertical size={18} color="#0f172a" />
+        </button>
+        {showMenu && (
+          <>
+            <div style={S.menuBackdrop} onClick={() => setShowMenu(false)} />
+            <div style={S.menuDropdown}>
+              <button style={S.menuItem} onClick={() => { setConfirmDelete(true); setShowMenu(false); }}>
+                <Trash2 size={14} color="#dc2626" />
+                <span style={{ color:'#dc2626' }}>Delete session</span>
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div style={S.scrollArea}>
+        <div style={{ padding: 16, paddingBottom: selectedIds.length > 0 ? 160 : 90, display:'flex', flexDirection:'column', gap: 14 }}>
+          {session.drills.length === 0 && (
+            <div style={S.emptyDrills}>
+              <div style={{ fontSize: 14, color:'#94a3b8', fontWeight: 500 }}>No drills yet</div>
+              <div style={{ fontSize: 12, color:'#cbd5e1', marginTop: 4 }}>Tap + below to add one</div>
+            </div>
+          )}
+
+          {/* Groups (each containing its drills) */}
+          {groupsWithDrills.map(g => {
+            const collapsed = collapsedGroups[g.id];
+            return (
+              <div key={g.id} style={S.groupContainer}>
+                <button style={S.groupHeader} onClick={() => toggleCollapse(g.id)}>
+                  <div style={{ display:'flex', alignItems:'center', gap: 6, flex: 1, minWidth: 0 }}>
+                    {collapsed
+                      ? <ChevronRight size={16} color="#0e7490" />
+                      : <ChevronDown size={16} color="#0e7490" />
+                    }
+                    <div style={{ textAlign:'left', flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color:'#0e7490' }}>★ {g.name}</div>
+                      <div style={{ fontSize: 11, color:'#0891b2', marginTop: 2 }}>
+                        {g.drills.length} drill{g.drills.length !== 1 ? 's' : ''}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display:'flex', alignItems:'center', gap: 4 }}>
+                    <div style={{ fontSize: 19, fontWeight: 800, color:'#0e7490', fontVariantNumeric:'tabular-nums' }}>
+                      {csToTime(g.total)}
+                    </div>
+                    <button
+                      style={S.smallIconBtn}
+                      onClick={(e) => { e.stopPropagation(); ungroupGroup(g.id); }}
+                      title="Ungroup (drills stay)"
+                    >
+                      <X size={13} color="#0891b2" />
+                    </button>
+                  </div>
+                </button>
+                {!collapsed && (
+                  <div style={S.groupBody}>
+                    {g.drills.map((d, i) => (
+                      <GroupedDrillRow
+                        key={d.id}
+                        drill={d}
+                        isLast={i === g.drills.length - 1}
+                        onEdit={() => setEditingDrill(d)}
+                        onRemoveFromGroup={() => removeDrillFromGroup(d.id)}
+                        onDelete={() => removeDrill(d.id)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Ungrouped drills */}
+          {ungroupedDrills.length > 0 && (
+            <div>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 8 }}>
+                <div style={S.sectionLabel}>
+                  {groupsWithDrills.length > 0 ? 'Ungrouped' : 'Drills'}
+                </div>
+                <div style={{ fontSize: 11, color:'#94a3b8' }}>Tap to select</div>
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap: 6 }}>
+                {ungroupedDrills.map(d => (
+                  <DrillRow
+                    key={d.id}
+                    drill={d}
+                    selected={selectedIds.includes(d.id)}
+                    onToggle={() => toggleSelect(d.id)}
+                    onEdit={() => setEditingDrill(d)}
+                    onDelete={() => removeDrill(d.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {session.drills.length > 0 && ungroupedDrills.length === 0 && (
+            <div style={{ ...S.emptyDrills, padding: '20px 16px' }}>
+              <div style={{ fontSize: 12, color:'#94a3b8' }}>
+                All drills are in groups. Add more with the + button below.
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {selectedIds.length >= 2 && !savingGroup && (
+        <div style={S.selectionBar}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 10 }}>
+            <div>
+              <div style={S.selectionKicker}>SUM OF {selectedIds.length}</div>
+              <div style={{ fontSize: 26, fontWeight: 800, color:'#fff', fontVariantNumeric:'tabular-nums' }}>
+                {csToTime(selectionSum)}
+              </div>
+            </div>
+            <button style={S.clearBtn} onClick={clearSelection}><X size={14} color="#fff" /></button>
+          </div>
+          <button style={S.saveGroupBtn} onClick={() => setSavingGroup(true)}>
+            Save as group
+          </button>
+        </div>
+      )}
+
+      {savingGroup && (
+        <div style={S.selectionBar}>
+          <div style={S.selectionKicker}>NAME THIS GROUP</div>
+          <input
+            autoFocus
+            style={S.groupNameInput}
+            placeholder="e.g. IM Attempt 1"
+            value={groupName}
+            onChange={(e) => setGroupName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') saveAsGroup(); }}
+          />
+          <div style={{ display:'flex', gap: 8, marginTop: 10 }}>
+            <button style={S.cancelGroupBtn} onClick={() => { setSavingGroup(false); setGroupName(''); }}>
+              Cancel
+            </button>
+            <button style={{ ...S.saveGroupBtn, opacity: groupName.trim() ? 1 : 0.5 }} onClick={saveAsGroup}>
+              Save
+            </button>
+          </div>
+        </div>
+      )}
+
+      {selectedIds.length < 2 && !savingGroup && (
+        <button style={S.fab} onClick={() => setShowAddDrill(true)}>
+          <Plus size={26} color="#fff" />
+        </button>
+      )}
+
+      {(showAddDrill || editingDrill) && (
+        <DrillSheet
+          drill={editingDrill}
+          onClose={() => { setShowAddDrill(false); setEditingDrill(null); }}
+          onSave={(drill) => editingDrill ? updateDrill(editingDrill.id, drill) : addDrill(drill)}
+        />
+      )}
+
+      {confirmDelete && (
+        <div style={S.modalOverlay} onClick={() => setConfirmDelete(false)}>
+          <div style={S.confirmModal} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6, color:'#0f172a' }}>Delete this session?</div>
+            <div style={{ fontSize: 13, color:'#64748b', marginBottom: 16 }}>
+              All drills and groups will be removed. This can't be undone.
+            </div>
+            <div style={{ display:'flex', gap: 8 }}>
+              <button style={S.cancelGroupBtn} onClick={() => setConfirmDelete(false)}>Cancel</button>
+              <button style={{ ...S.saveGroupBtn, background:'#dc2626' }} onClick={onDelete}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function GroupedDrillRow({ drill, isLast, onEdit, onRemoveFromGroup, onDelete }) {
+  const stroke = STROKES.find(s => s.id === drill.strokeId) || STROKES[4];
+  const [showActions, setShowActions] = useState(false);
+  return (
+    <div style={{ ...S.groupedDrillRow, ...(isLast ? { borderBottom: 'none' } : {}) }}>
+      <button style={S.groupedDrillMain} onClick={() => setShowActions(!showActions)}>
+        <div style={{ ...S.strokeChip, background: stroke.color, marginLeft: 6 }}>{stroke.short}</div>
+        <div style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
+            {drill.distance}M {stroke.name}
+          </div>
+          {drill.label && (
+            <div style={{ fontSize: 11, color: '#64748b', marginTop: 1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+              {drill.label}
+            </div>
+          )}
+        </div>
+        <div style={{ fontSize: 15, fontWeight: 700, color:'#0f172a', fontVariantNumeric:'tabular-nums' }}>
+          {csToTime(drill.timeCs)}
+        </div>
+      </button>
+      {showActions && (
+        <div style={S.groupedDrillActions}>
+          <button style={S.groupedActionBtn} onClick={() => { setShowActions(false); onEdit(); }}>
+            <Edit2 size={12} color="#64748b" />
+            <span style={{ fontSize: 12, color:'#64748b', fontWeight: 600 }}>Edit</span>
+          </button>
+          <button style={S.groupedActionBtn} onClick={() => { setShowActions(false); onRemoveFromGroup(); }}>
+            <span style={{ fontSize: 14, color:'#0891b2', fontWeight: 700, lineHeight: 1 }}>↗</span>
+            <span style={{ fontSize: 12, color:'#0891b2', fontWeight: 600 }}>Remove from group</span>
+          </button>
+          <button style={{ ...S.groupedActionBtn, borderBottom: 'none' }} onClick={() => { setShowActions(false); onDelete(); }}>
+            <Trash2 size={12} color="#dc2626" />
+            <span style={{ fontSize: 12, color:'#dc2626', fontWeight: 600 }}>Delete drill</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DrillRow({ drill, selected, onToggle, onEdit, onDelete }) {
+  const stroke = STROKES.find(s => s.id === drill.strokeId) || STROKES[4];
+  return (
+    <div style={{ ...S.drillRow, ...(selected ? S.drillRowSelected : {}) }}>
+      <button style={S.drillMain} onClick={onToggle}>
+        <div style={{ ...S.checkbox, ...(selected ? { background: '#0ea5e9', borderColor: '#0ea5e9' } : {}) }}>
+          {selected && <Check size={13} color="#fff" strokeWidth={3} />}
+        </div>
+        <div style={{ ...S.strokeChip, background: stroke.color }}>{stroke.short}</div>
+        <div style={{ flex:1, textAlign:'left', minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color:'#0f172a' }}>
+            {drill.distance}M {stroke.name}
+          </div>
+          {drill.label && (
+            <div style={{ fontSize: 11, color:'#64748b', marginTop: 1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+              {drill.label}
+            </div>
+          )}
+        </div>
+        <div style={{ fontSize: 16, fontWeight: 700, color:'#0f172a', fontVariantNumeric:'tabular-nums', marginRight: 4 }}>
+          {csToTime(drill.timeCs)}
+        </div>
+      </button>
+      <div style={S.drillActions}>
+        <button style={S.smallIconBtn} onClick={onEdit}><Edit2 size={12} color="#64748b" /></button>
+        <button style={S.smallIconBtn} onClick={onDelete}><Trash2 size={12} color="#dc2626" /></button>
+      </div>
+    </div>
+  );
+}
+
+function DrillSheet({ drill, onClose, onSave }) {
+  const [strokeId, setStrokeId] = useState(drill?.strokeId || 'free');
+  const [distance, setDistance] = useState(drill?.distance || 25);
+  const [useCustom, setUseCustom] = useState(drill ? !DISTANCES.includes(drill.distance) : false);
+  const [customDistance, setCustomDistance] = useState(
+    drill && !DISTANCES.includes(drill.distance) ? String(drill.distance) : ''
+  );
+  const [timeDigits, setTimeDigits] = useState(drill ? String(drill.timeCs).padStart(6, '0').replace(/^0+/, '') : '');
+  const [label, setLabel] = useState(drill?.label || '');
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    setTimeout(() => inputRef.current?.focus(), 80);
+  }, []);
+
+  const displayTime = formatTimeInput(timeDigits || '0');
+
+  const handleTimeKey = (e) => {
+    if (e.key === 'Backspace') {
+      e.preventDefault();
+      setTimeDigits(prev => prev.slice(0, -1));
+    } else if (/^[0-9]$/.test(e.key)) {
+      e.preventDefault();
+      setTimeDigits(prev => (prev + e.key).slice(-6));
+    } else if (e.key === 'Enter') {
+      handleSave();
+    }
+  };
+  const handleTimeChange = (e) => {
+    const digits = e.target.value.replace(/\D/g, '').slice(-6);
+    setTimeDigits(digits);
+  };
+
+  const handleSave = () => {
+    const finalDistance = useCustom ? parseInt(customDistance) : distance;
+    if (!finalDistance || finalDistance <= 0) return;
+    const timeCs = parseInt(timeDigits || '0', 10);
+    if (timeCs <= 0) return;
+    onSave({ strokeId, distance: finalDistance, timeCs, label: label.trim() });
+  };
+
+  const canSave = (useCustom ? parseInt(customDistance) > 0 : true) && parseInt(timeDigits || '0') > 0;
+
+  return (
+    <div style={S.modalOverlay} onClick={onClose}>
+      <div style={S.sheet} onClick={(e) => e.stopPropagation()}>
+        <div style={S.sheetHandle} />
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 18 }}>
+          <div style={{ fontSize: 18, fontWeight: 700, color:'#0f172a' }}>
+            {drill ? 'Edit drill' : 'New drill'}
+          </div>
+          <button style={S.iconBtn} onClick={onClose}><X size={20} color="#64748b" /></button>
+        </div>
+
+        <div style={S.fieldLabel}>Stroke</div>
+        <div style={{ display:'flex', gap: 6, flexWrap:'wrap', marginBottom: 18 }}>
+          {STROKES.map(s => (
+            <button
+              key={s.id}
+              style={{
+                ...S.strokeButton,
+                ...(strokeId === s.id ? { background: s.color, color:'#fff', borderColor: s.color } : {})
+              }}
+              onClick={() => setStrokeId(s.id)}
+            >
+              {s.short}
+            </button>
+          ))}
+        </div>
+
+        <div style={S.fieldLabel}>Distance</div>
+        <div style={{ display:'flex', gap: 6, flexWrap:'wrap', marginBottom: 8 }}>
+          {DISTANCES.map(d => (
+            <button
+              key={d}
+              style={{ ...S.distButton, ...(!useCustom && distance === d ? S.distButtonActive : {}) }}
+              onClick={() => { setUseCustom(false); setDistance(d); }}
+            >
+              {d}M
+            </button>
+          ))}
+          <button
+            style={{ ...S.distButton, ...(useCustom ? S.distButtonActive : {}) }}
+            onClick={() => setUseCustom(true)}
+          >
+            Custom
+          </button>
+        </div>
+        {useCustom && (
+          <input
+            type="number"
+            placeholder="meters"
+            style={S.textInput}
+            value={customDistance}
+            onChange={(e) => setCustomDistance(e.target.value)}
+          />
+        )}
+
+        <div style={{ ...S.fieldLabel, marginTop: 18 }}>Time</div>
+        <div style={S.timeDisplay} onClick={() => inputRef.current?.focus()}>
+          <div style={{
+            fontSize: 38, fontWeight: 800,
+            color: timeDigits ? '#0f172a' : '#cbd5e1',
+            fontVariantNumeric:'tabular-nums', letterSpacing: 1
+          }}>
+            {displayTime}
+          </div>
+          <div style={{ fontSize: 10, color:'#94a3b8', marginTop: 4, fontWeight: 700, letterSpacing: 0.8 }}>
+            MM : SS . HUNDREDTHS
+          </div>
+        </div>
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          style={S.hiddenInput}
+          value={timeDigits}
+          onKeyDown={handleTimeKey}
+          onChange={handleTimeChange}
+        />
+        <div style={{ fontSize: 11, color:'#94a3b8', marginTop: 6, textAlign:'center' }}>
+          Type digits — e.g. <strong>3045</strong> → 00:30.45
+        </div>
+
+        <div style={{ ...S.fieldLabel, marginTop: 18 }}>Label (optional)</div>
+        <input
+          type="text"
+          placeholder="e.g. first try, sprint, drill set"
+          style={S.textInput}
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+        />
+
+        <button
+          style={{ ...S.primaryBtn, marginTop: 22, opacity: canSave ? 1 : 0.4, cursor: canSave ? 'pointer' : 'not-allowed' }}
+          disabled={!canSave}
+          onClick={handleSave}
+        >
+          {drill ? 'Save changes' : 'Add drill'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ============ Styles ============
+const S = {
+  appShell: {
+    minHeight: '100vh',
+    background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    padding: 20, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  },
+  phoneFrame: {
+    width: 390, height: 780,
+    background: '#f8fafc',
+    borderRadius: 44, overflow: 'hidden',
+    boxShadow: '0 25px 80px rgba(0,0,0,0.35), 0 0 0 12px #1e293b, 0 0 0 14px #475569',
+    position: 'relative', display: 'flex', flexDirection: 'column',
+  },
+  statusBar: {
+    height: 36, background: '#fff',
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    padding: '0 26px', fontSize: 13, fontWeight: 600, color: '#0f172a', flexShrink: 0,
+  },
+  appContent: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' },
+  header: {
+    height: 62, background: '#fff',
+    borderBottom: '1px solid #e2e8f0',
+    display: 'flex', alignItems: 'center', padding: '0 12px', gap: 6,
+    flexShrink: 0, position: 'relative',
+  },
+  logoIcon: {
+    width: 36, height: 36, borderRadius: 11,
+    background: 'linear-gradient(135deg, #0ea5e9, #0284c7)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+  },
+  appTitle: { fontSize: 17, fontWeight: 800, color: '#0f172a', lineHeight: 1 },
+  appSubtitle: { fontSize: 11, color: '#64748b', marginTop: 3 },
+  headerKicker: { fontSize: 10, color: '#64748b', fontWeight: 700, letterSpacing: 0.8 },
+  headerTitle: { fontSize: 14, fontWeight: 700, color: '#0f172a', marginTop: 2 },
+  scrollArea: { flex: 1, overflowY: 'auto', overflowX: 'hidden' },
+  sectionLabel: {
+    fontSize: 11, fontWeight: 700, color: '#64748b',
+    textTransform: 'uppercase', letterSpacing: 0.8,
+  },
+  sessionCard: {
+    background: '#fff', borderRadius: 14, padding: 14,
+    border: '1px solid #e2e8f0', cursor: 'pointer',
+    display: 'flex', flexDirection: 'column', gap: 8, width: '100%',
+    fontFamily: 'inherit', textAlign: 'left',
+  },
+  sessionDate: { fontSize: 15, fontWeight: 700, color: '#0f172a' },
+  sessionMeta: { fontSize: 12, color: '#64748b', marginTop: 3 },
+  sessionTotalLabel: { fontSize: 10, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 },
+  sessionTotal: { fontSize: 17, fontWeight: 800, color: '#0f172a', fontVariantNumeric: 'tabular-nums', marginTop: 2 },
+  bestGroupRow: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    background: '#ecfeff', padding: '6px 10px', borderRadius: 8, marginTop: 2,
+  },
+  fab: {
+    position: 'absolute', bottom: 22, right: 22,
+    width: 58, height: 58, borderRadius: 29,
+    background: 'linear-gradient(135deg, #0ea5e9, #0284c7)',
+    border: 'none', cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    boxShadow: '0 10px 24px rgba(2,132,199,0.45)', zIndex: 10,
+  },
+  emptyState: {
+    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+    padding: '70px 20px', height: '100%',
+  },
+  iconBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    background: 'transparent', border: 'none', cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+  },
+  smallIconBtn: {
+    width: 28, height: 28, borderRadius: 14,
+    background: 'transparent', border: 'none', cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+  },
+  menuBackdrop: { position: 'fixed', inset: 0, zIndex: 19 },
+  menuDropdown: {
+    position: 'absolute', top: 56, right: 10,
+    background: '#fff', borderRadius: 10,
+    boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
+    border: '1px solid #e2e8f0', overflow: 'hidden', zIndex: 20, minWidth: 170,
+  },
+  menuItem: {
+    display: 'flex', alignItems: 'center', gap: 8,
+    padding: '11px 14px', background: 'transparent', border: 'none',
+    cursor: 'pointer', fontSize: 13, fontWeight: 500, width: '100%', textAlign: 'left',
+  },
+  // ===== Group containers =====
+  groupContainer: {
+    background: 'linear-gradient(180deg, #ecfeff 0%, #f0fdfa 100%)',
+    border: '1px solid #a5f3fc',
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  groupHeader: {
+    width: '100%',
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: '12px 12px',
+    background: 'transparent', border: 'none', cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  groupBody: {
+    background: '#fff',
+    margin: '0 8px 8px',
+    borderRadius: 10,
+    overflow: 'hidden',
+    border: '1px solid #e0f2fe',
+  },
+  groupedDrillRow: {
+    display: 'flex', flexDirection: 'column',
+    borderBottom: '1px solid #f1f5f9',
+  },
+  groupedDrillMain: {
+    display: 'flex', alignItems: 'center', gap: 10,
+    padding: '10px 10px',
+    background: 'transparent', border: 'none', cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  groupedDrillActions: {
+    display: 'flex', flexDirection: 'column',
+    borderTop: '1px solid #f1f5f9',
+    background: '#f8fafc',
+  },
+  groupedActionBtn: {
+    display: 'flex', alignItems: 'center', gap: 8,
+    padding: '9px 14px',
+    background: 'transparent', border: 'none', cursor: 'pointer',
+    fontFamily: 'inherit', textAlign: 'left',
+    borderBottom: '1px solid #f1f5f9',
+  },
+  // ===== Ungrouped drills =====
+  emptyDrills: {
+    background: '#fff', border: '1px dashed #e2e8f0', borderRadius: 12,
+    padding: '28px 20px', textAlign: 'center',
+  },
+  drillRow: {
+    background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0',
+    display: 'flex', alignItems: 'stretch', overflow: 'hidden',
+    transition: 'all 0.15s',
+  },
+  drillRowSelected: {
+    borderColor: '#0ea5e9', background: '#f0f9ff',
+    boxShadow: '0 0 0 1px #0ea5e9',
+  },
+  drillMain: {
+    flex: 1, display: 'flex', alignItems: 'center', gap: 10,
+    padding: '10px 12px', background: 'transparent', border: 'none',
+    cursor: 'pointer', fontFamily: 'inherit', minWidth: 0,
+  },
+  drillActions: {
+    display: 'flex', flexDirection: 'column',
+    borderLeft: '1px solid #f1f5f9',
+  },
+  checkbox: {
+    width: 20, height: 20, borderRadius: 6,
+    border: '2px solid #cbd5e1', background: '#fff',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  strokeChip: {
+    fontSize: 10, fontWeight: 800, color: '#fff',
+    padding: '4px 7px', borderRadius: 6, letterSpacing: 0.3,
+    flexShrink: 0, minWidth: 38, textAlign: 'center',
+  },
+  selectionBar: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    background: '#0f172a', padding: '14px 16px 18px',
+    borderTopLeftRadius: 18, borderTopRightRadius: 18,
+    boxShadow: '0 -10px 30px rgba(15,23,42,0.25)', zIndex: 15,
+  },
+  selectionKicker: { fontSize: 10, color: '#94a3b8', fontWeight: 700, letterSpacing: 1 },
+  clearBtn: {
+    width: 32, height: 32, borderRadius: 16, background: 'rgba(255,255,255,0.1)',
+    border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+  },
+  saveGroupBtn: {
+    flex: 1, background: '#0ea5e9', color: '#fff',
+    border: 'none', borderRadius: 12, padding: '12px 18px',
+    fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+  },
+  cancelGroupBtn: {
+    flex: 1, background: 'rgba(255,255,255,0.1)', color: '#fff',
+    border: 'none', borderRadius: 12, padding: '12px 18px',
+    fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+  },
+  groupNameInput: {
+    width: '100%', background: 'rgba(255,255,255,0.1)', color: '#fff',
+    border: '1px solid rgba(255,255,255,0.2)', borderRadius: 10,
+    padding: '12px 14px', fontSize: 15, fontFamily: 'inherit', outline: 'none',
+    boxSizing: 'border-box', marginTop: 4,
+  },
+  modalOverlay: {
+    position: 'absolute', inset: 0,
+    background: 'rgba(15,23,42,0.5)',
+    display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+    zIndex: 100,
+  },
+  sheet: {
+    width: '100%', background: '#fff',
+    borderTopLeftRadius: 22, borderTopRightRadius: 22,
+    padding: '12px 20px 24px', maxHeight: '90%', overflowY: 'auto',
+  },
+  sheetHandle: {
+    width: 40, height: 4, borderRadius: 2,
+    background: '#cbd5e1', margin: '0 auto 14px',
+  },
+  confirmModal: {
+    width: '85%', maxWidth: 320, background: '#fff',
+    borderRadius: 16, padding: 20, alignSelf: 'center', marginBottom: 80,
+  },
+  fieldLabel: {
+    fontSize: 11, fontWeight: 700, color: '#64748b',
+    textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8,
+  },
+  strokeButton: {
+    padding: '9px 14px', borderRadius: 20,
+    border: '1px solid #e2e8f0', background: '#fff',
+    fontSize: 13, fontWeight: 600, color: '#475569',
+    cursor: 'pointer', fontFamily: 'inherit',
+  },
+  distButton: {
+    padding: '9px 16px', borderRadius: 10,
+    border: '1px solid #e2e8f0', background: '#fff',
+    fontSize: 13, fontWeight: 700, color: '#475569',
+    cursor: 'pointer', fontFamily: 'inherit', minWidth: 56,
+  },
+  distButtonActive: {
+    background: '#0ea5e9', color: '#fff', borderColor: '#0ea5e9',
+  },
+  textInput: {
+    width: '100%', padding: '12px 14px', borderRadius: 10,
+    border: '1px solid #e2e8f0', fontSize: 14, fontFamily: 'inherit',
+    boxSizing: 'border-box', outline: 'none', color: '#0f172a', background: '#fff',
+  },
+  timeDisplay: {
+    background: '#f1f5f9', borderRadius: 14,
+    padding: '20px 16px', textAlign: 'center',
+    border: '2px solid #e2e8f0', cursor: 'text',
+  },
+  hiddenInput: {
+    position: 'absolute', opacity: 0, pointerEvents: 'none',
+    width: 1, height: 1,
+  },
+  primaryBtn: {
+    width: '100%', background: 'linear-gradient(135deg, #0ea5e9, #0284c7)',
+    color: '#fff', border: 'none', borderRadius: 12,
+    padding: '14px', fontSize: 15, fontWeight: 700,
+    cursor: 'pointer', fontFamily: 'inherit',
+    boxShadow: '0 6px 16px rgba(2,132,199,0.3)',
+  },
+};

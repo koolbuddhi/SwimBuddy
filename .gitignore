@@ -1,0 +1,31 @@
+# dependencies
+node_modules/
+app/node_modules/
+api/node_modules/
+
+# Expo
+app/.expo/
+app/dist/
+app/web-build/
+
+# native builds
+app/android/
+app/ios/
+
+# env files
+.env
+.env.local
+.env*.local
+
+# TypeScript
+*.tsbuildinfo
+
+# macOS
+.DS_Store
+
+# Cloudflare
+api/.wrangler/
+api/dist/
+
+# test coverage
+coverage/

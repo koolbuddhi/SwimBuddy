@@ -1,0 +1,14 @@
+{
+  "name": "swimbuddy",
+  "version": "0.0.1",
+  "private": true,
+  "workspaces": [
+    "app",
+    "api"
+  ],
+  "scripts": {
+    "typecheck": "npm run typecheck --workspace=app",
+    "lint": "npm run lint --workspace=app",
+    "test": "npm test --workspace=app"
+  }
+}
