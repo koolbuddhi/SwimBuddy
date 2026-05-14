@@ -6,6 +6,7 @@ import type { Drill, Session } from './types';
 interface SessionContextValue {
   sessions: Session[];
   loading: boolean;
+  pendingCount: number;
   createSession(): Promise<Session>;
   updateSession(id: string, updater: (s: Session) => Session): Promise<void>;
   deleteSession(id: string): Promise<void>;
@@ -30,6 +31,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const [pendingCount, setPendingCount] = useState(0);
+
+  const queueOp = (op: Parameters<typeof localDB.queueMutation>[0]) => {
+    localDB.queueMutation(op);
+    setPendingCount((n) => n + 1);
+  };
+
   const createSession = async (): Promise<Session> => {
     const now = new Date().toISOString();
     const session: Session = {
@@ -43,6 +51,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     };
     await localDB.putSession(session);
     setSessions((prev) => [session, ...prev]);
+    queueOp({ op: 'upsert_session', session, clientVersion: 1 });
     return session;
   };
 
@@ -54,7 +63,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       const next = prev.map((s) => (s.id === id ? updater(s) : s));
       const updated = next.find((s) => s.id === id);
       if (updated) {
-        localDB.putSession({ ...updated, updatedAt: new Date().toISOString() });
+        const withTs = { ...updated, updatedAt: new Date().toISOString() };
+        localDB.putSession(withTs);
+        queueOp({ op: 'upsert_session', session: withTs, clientVersion: 1 });
       }
       return next;
     });
@@ -63,6 +74,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const deleteSession = async (id: string): Promise<void> => {
     await localDB.deleteSession(id);
     setSessions((prev) => prev.filter((s) => s.id !== id));
+    queueOp({ op: 'delete_session', sessionId: id });
   };
 
   const addDrill = async (sessionId: string, drill: Drill): Promise<void> => {
@@ -123,7 +135,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   return (
     <SessionContext.Provider
       value={{
-        sessions, loading, createSession, updateSession, deleteSession,
+        sessions, loading, pendingCount, createSession, updateSession, deleteSession,
         addDrill, updateDrill, deleteDrill,
         saveGroup, ungroupGroup, removeGroup,
       }}
