@@ -35,6 +35,7 @@ const mockContext = (session: Session) => {
   const saveGroup = jest.fn().mockResolvedValue(undefined);
   const ungroupGroup = jest.fn().mockResolvedValue(undefined);
   const removeGroup = jest.fn().mockResolvedValue(undefined);
+  const updateSession = jest.fn().mockResolvedValue(undefined);
   mockUseSession.mockReturnValue({
     sessions: [session],
     addDrill,
@@ -44,9 +45,10 @@ const mockContext = (session: Session) => {
     saveGroup,
     ungroupGroup,
     removeGroup,
+    updateSession,
     createSession: jest.fn(),
   });
-  return { addDrill, updateDrill, deleteDrill, deleteSession, saveGroup, ungroupGroup, removeGroup };
+  return { addDrill, updateDrill, deleteDrill, deleteSession, saveGroup, ungroupGroup, removeGroup, updateSession };
 };
 
 describe('SessionScreen', () => {
@@ -171,5 +173,45 @@ describe('SessionScreen', () => {
     fireEvent.press(screen.getAllByTestId('drill-row-main')[0]);
     fireEvent.press(screen.getByTestId('selection-clear-btn'));
     expect(screen.queryByText(/selected/)).toBeNull();
+  });
+
+  describe('date editor', () => {
+    it('tapping the date title opens the editor pre-filled with the current date', () => {
+      mockContext(makeSession({ date: '2026-05-13' }));
+      render(<SessionScreen sessionId="s1" onBack={jest.fn()} />);
+      fireEvent.press(screen.getByTestId('session-date-btn'));
+      expect(screen.getByTestId('date-edit-input').props.value).toBe('2026-05-13');
+    });
+
+    it('saving a valid date calls updateSession with the new date', async () => {
+      const { updateSession } = mockContext(makeSession({ date: '2026-05-13' }));
+      render(<SessionScreen sessionId="s1" onBack={jest.fn()} />);
+      fireEvent.press(screen.getByTestId('session-date-btn'));
+      fireEvent.changeText(screen.getByTestId('date-edit-input'), '2026-04-30');
+      await act(async () => { fireEvent.press(screen.getByTestId('date-edit-save')); });
+      expect(updateSession).toHaveBeenCalledWith('s1', expect.any(Function));
+      // Run the updater on a dummy session to verify it sets date
+      const updater = updateSession.mock.calls[0][1];
+      expect(updater({ date: '2026-05-13' })).toEqual({ date: '2026-04-30' });
+    });
+
+    it('Save is disabled for malformed date and does not call updateSession', async () => {
+      const { updateSession } = mockContext(makeSession({ date: '2026-05-13' }));
+      render(<SessionScreen sessionId="s1" onBack={jest.fn()} />);
+      fireEvent.press(screen.getByTestId('session-date-btn'));
+      fireEvent.changeText(screen.getByTestId('date-edit-input'), 'not-a-date');
+      const saveBtn = screen.getByTestId('date-edit-save');
+      expect(saveBtn.props.accessibilityState?.disabled).toBe(true);
+      await act(async () => { fireEvent.press(saveBtn); });
+      expect(updateSession).not.toHaveBeenCalled();
+    });
+
+    it('cancel closes the modal without calling updateSession', () => {
+      const { updateSession } = mockContext(makeSession());
+      render(<SessionScreen sessionId="s1" onBack={jest.fn()} />);
+      fireEvent.press(screen.getByTestId('session-date-btn'));
+      fireEvent.press(screen.getByTestId('date-edit-cancel'));
+      expect(updateSession).not.toHaveBeenCalled();
+    });
   });
 });
