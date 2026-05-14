@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { formatTimeInput } from '../lib/time';
+import { formatTimeInput, digToCs, csToDig } from '../lib/time';
 import type { Drill, StrokeId } from '../lib/types';
 
 // ── constants ─────────────────────────────────────────────────────────────────
@@ -24,11 +24,6 @@ const STROKES: { id: StrokeId; name: string; short: string; color: string }[] = 
 const PRESET_DISTANCES = [5, 15, 25, 50];
 
 // ── helpers ───────────────────────────────────────────────────────────────────
-
-/** Convert a timeCs value into its 6-digit digit string for the input state. */
-function csToDig(cs: number): string {
-  return cs > 0 ? String(cs) : '';
-}
 
 // ── component ─────────────────────────────────────────────────────────────────
 
@@ -59,7 +54,7 @@ export function DrillSheet({ drill, onClose, onSave }: DrillSheetProps) {
   const inputRef = useRef<TextInput>(null);
 
   const displayTime = formatTimeInput(timeDigits || '0');
-  const timeCs = parseInt(timeDigits || '0', 10);
+  const timeCs = digToCs(timeDigits || '0');
   const finalDist = useCustom ? parseInt(customDist || '0', 10) : distance;
   const canSave = timeCs > 0 && finalDist > 0;
 

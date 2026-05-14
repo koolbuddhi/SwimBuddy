@@ -14,6 +14,24 @@ export function formatTimeInput(digits: string): string {
   return `${d.slice(0, 2)}:${d.slice(2, 4)}.${d.slice(4, 6)}`;
 }
 
+// Convert a 6-digit MMSSCC string → centiseconds (respects 60s/min boundary)
+export function digToCs(digits: string): number {
+  const d = (digits || '0').padStart(6, '0').slice(-6);
+  const mm = parseInt(d.slice(0, 2), 10);
+  const ss = parseInt(d.slice(2, 4), 10);
+  const cc = parseInt(d.slice(4, 6), 10);
+  return mm * 6000 + ss * 100 + cc;
+}
+
+// Convert centiseconds → 6-digit MMSSCC string for the digit input
+export function csToDig(cs: number): string {
+  if (cs <= 0) return '';
+  const mm = Math.floor(cs / 6000);
+  const ss = Math.floor((cs % 6000) / 100);
+  const cc = cs % 100;
+  return String(mm).padStart(2, '0') + String(ss).padStart(2, '0') + String(cc).padStart(2, '0');
+}
+
 export function todayISO(): string {
   return new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in device-local time
 }

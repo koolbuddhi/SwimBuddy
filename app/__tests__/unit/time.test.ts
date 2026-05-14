@@ -1,6 +1,8 @@
 import {
   csToTime,
   formatTimeInput,
+  digToCs,
+  csToDig,
   todayISO,
   isToday,
   isYesterday,
@@ -66,6 +68,57 @@ describe('formatTimeInput', () => {
 
   it('left-pads short strings', () => {
     expect(formatTimeInput('5')).toBe('00:00.05');
+  });
+});
+
+describe('digToCs', () => {
+  it('converts "3045" → 3045cs (30.45 s)', () => {
+    expect(digToCs('3045')).toBe(3045);
+  });
+
+  it('converts "010000" → 6000cs (1:00.00)', () => {
+    // key case: 01 min × 6000 + 00 s × 100 + 00 = 6000
+    expect(digToCs('010000')).toBe(6000);
+  });
+
+  it('converts "013000" → 9000cs (1:30.00)', () => {
+    expect(digToCs('013000')).toBe(9000);
+  });
+
+  it('converts "012345" → 1:23.45 = 8345cs', () => {
+    // 1×6000 + 23×100 + 45 = 6000 + 2300 + 45 = 8345
+    expect(digToCs('012345')).toBe(8345);
+  });
+
+  it('converts empty/zero → 0', () => {
+    expect(digToCs('')).toBe(0);
+    expect(digToCs('0')).toBe(0);
+  });
+
+  it('rounds-trip correctly with csToDig', () => {
+    const cases = [3045, 6000, 9000, 8345, 100, 59999];
+    for (const cs of cases) {
+      expect(digToCs(csToDig(cs))).toBe(cs);
+    }
+  });
+});
+
+describe('csToDig', () => {
+  it('converts 3045cs → "003045"', () => {
+    expect(csToDig(3045)).toBe('003045');
+  });
+
+  it('converts 6000cs (1:00.00) → "010000"', () => {
+    expect(csToDig(6000)).toBe('010000');
+  });
+
+  it('converts 9000cs (1:30.00) → "013000"', () => {
+    expect(csToDig(9000)).toBe('013000');
+  });
+
+  it('returns empty string for 0 or negative', () => {
+    expect(csToDig(0)).toBe('');
+    expect(csToDig(-1)).toBe('');
   });
 });
 
