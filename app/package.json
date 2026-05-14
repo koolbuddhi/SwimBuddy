@@ -37,6 +37,7 @@
     "@react-navigation/native": "^7.1.8",
     "dexie": "^4.4.2",
     "expo": "~54.0.33",
+    "expo-auth-session": "^55.0.16",
     "expo-constants": "~18.0.13",
     "expo-file-system": "^19.0.22",
     "expo-font": "~14.0.11",
