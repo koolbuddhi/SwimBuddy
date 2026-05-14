@@ -8,3 +8,6 @@ binding = "DB"
 database_name = "swimbuddy-db"
 database_id = "3225990c-261e-44a2-bc23-f1e5df7264d9"
 migrations_dir = "src/db/migrations"
+
+[vars]
+# set GOOGLE_CLIENT_ID in Cloudflare dashboard (prod) or .dev.vars (local dev)
