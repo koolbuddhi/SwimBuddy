@@ -87,6 +87,9 @@ export function SessionScreen({ sessionId, onBack }: SessionScreenProps) {
     <View style={styles.container}>
       {/* header */}
       <View style={styles.header}>
+        <Pressable testID="session-back-btn" onPress={onBack} style={styles.backBtn} accessibilityLabel="Back to sessions" hitSlop={8}>
+          <Text style={styles.backBtnText}>← Sessions</Text>
+        </Pressable>
         <Text style={styles.title}>{dateLabel}</Text>
         <Pressable testID="session-delete-btn" onPress={handleDeleteSession} style={styles.deleteBtn} accessibilityLabel="Delete session">
           <Text style={styles.deleteBtnText}>Delete</Text>
@@ -177,7 +180,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
   },
-  title: { fontSize: 18, fontWeight: '700', color: '#0f172a' },
+  title: { fontSize: 18, fontWeight: '700', color: '#0f172a', flex: 1, textAlign: 'center' },
+  backBtn: { paddingHorizontal: 8, paddingVertical: 6 },
+  backBtnText: { fontSize: 14, fontWeight: '600', color: '#0ea5e9' },
   deleteBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#fef2f2' },
   deleteBtnText: { fontSize: 13, fontWeight: '600', color: '#dc2626' },
   list: { padding: 16, paddingBottom: 80 },

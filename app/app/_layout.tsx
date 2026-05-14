@@ -30,10 +30,7 @@ export default function RootLayout() {
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="auth" />
-            <Stack.Screen
-              name="session/[id]"
-              options={{ headerShown: true, title: 'Session', headerBackTitle: 'Home' }}
-            />
+            <Stack.Screen name="session/[id]" />
           </Stack>
           <StatusBar style="auto" />
         </AuthGate>
