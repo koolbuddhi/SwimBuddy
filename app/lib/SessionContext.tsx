@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { localDB } from './localDB';
 import { todayISO } from './time';
-import type { Session } from './types';
+import type { Drill, Session } from './types';
 
 interface SessionContextValue {
   sessions: Session[];
@@ -9,6 +9,9 @@ interface SessionContextValue {
   createSession(): Promise<Session>;
   updateSession(id: string, updater: (s: Session) => Session): Promise<void>;
   deleteSession(id: string): Promise<void>;
+  addDrill(sessionId: string, drill: Drill): Promise<void>;
+  updateDrill(sessionId: string, drill: Drill): Promise<void>;
+  deleteDrill(sessionId: string, drillId: string): Promise<void>;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -59,8 +62,31 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setSessions((prev) => prev.filter((s) => s.id !== id));
   };
 
+  const addDrill = async (sessionId: string, drill: Drill): Promise<void> => {
+    await updateSession(sessionId, (s) => ({
+      ...s,
+      drills: [...s.drills, drill],
+    }));
+  };
+
+  const updateDrill = async (sessionId: string, drill: Drill): Promise<void> => {
+    await updateSession(sessionId, (s) => ({
+      ...s,
+      drills: s.drills.map((d) => (d.id === drill.id ? drill : d)),
+    }));
+  };
+
+  const deleteDrill = async (sessionId: string, drillId: string): Promise<void> => {
+    await updateSession(sessionId, (s) => ({
+      ...s,
+      drills: s.drills.filter((d) => d.id !== drillId),
+    }));
+  };
+
   return (
-    <SessionContext.Provider value={{ sessions, loading, createSession, updateSession, deleteSession }}>
+    <SessionContext.Provider
+      value={{ sessions, loading, createSession, updateSession, deleteSession, addDrill, updateDrill, deleteDrill }}
+    >
       {children}
     </SessionContext.Provider>
   );
