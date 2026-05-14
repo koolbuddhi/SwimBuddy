@@ -1,9 +1,73 @@
-import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../lib/auth';
+import { initGoogleAuth, promptOneTap, renderGoogleButton } from '../lib/auth/google.web';
+
+const CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
+const API_BASE = process.env.EXPO_PUBLIC_API_BASE ?? 'http://localhost:8787';
+
+function loadGisScript(): Promise<void> {
+  if (typeof document === 'undefined') return Promise.resolve();
+  if (window.google?.accounts?.id) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>('script[data-gis]');
+    if (existing) {
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener('error', () => reject(new Error('GIS script failed to load')), { once: true });
+      return;
+    }
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true;
+    s.defer = true;
+    s.dataset.gis = '1';
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('GIS script failed to load'));
+    document.head.appendChild(s);
+  });
+}
 
 export function AuthScreen() {
-  const { loading } = useAuth();
+  const { loading, signIn } = useAuth();
+  const [signingIn, setSigningIn] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [gisReady, setGisReady] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    if (!CLIENT_ID) {
+      setError('EXPO_PUBLIC_GOOGLE_CLIENT_ID is not set in app/.env');
+      return;
+    }
+    loadGisScript()
+      .then(() => {
+        initGoogleAuth(CLIENT_ID, async ({ credential }) => {
+          setSigningIn(true);
+          setError(null);
+          try {
+            const r = await fetch(`${API_BASE}/auth/google`, {
+              method: 'POST',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ idToken: credential }),
+            });
+            if (!r.ok) throw new Error(`Sign-in failed (${r.status})`);
+            const user = await r.json();
+            await signIn({ id: user.id, email: user.email, name: user.name ?? user.email });
+          } catch (e) {
+            setError(e instanceof Error ? e.message : 'Sign-in failed');
+            setSigningIn(false);
+          }
+        });
+        setGisReady(true);
+      })
+      .catch((e) => setError(e.message));
+  }, [signIn]);
+
+  // Callback ref — fires the moment the div is mounted AND the SDK is ready.
+  const mountGoogleButton = (el: HTMLDivElement | null) => {
+    if (el && gisReady) renderGoogleButton(el);
+  };
 
   if (loading) {
     return (
@@ -18,13 +82,35 @@ export function AuthScreen() {
       <Text style={styles.title}>SwimBuddy</Text>
       <Text style={styles.subtitle}>Log your swim sessions</Text>
 
-      <Pressable
-        testID="auth-signin-btn"
-        style={styles.googleBtn}
-        accessibilityLabel="Sign in with Google"
-      >
-        <Text style={styles.googleBtnText}>Sign in with Google</Text>
-      </Pressable>
+      {Platform.OS === 'web' ? (
+        // Google's official rendered button — reliable click-to-sign-in.
+        gisReady ? (
+          React.createElement('div', {
+            ref: mountGoogleButton,
+            'data-testid': 'google-rendered-btn',
+            style: { minHeight: 44 },
+          })
+        ) : (
+          <ActivityIndicator size="small" color="#0ea5e9" />
+        )
+      ) : (
+        <Pressable
+          testID="auth-signin-btn"
+          style={[styles.googleBtn, signingIn && styles.googleBtnDisabled]}
+          accessibilityLabel="Sign in with Google"
+          disabled={signingIn || !CLIENT_ID}
+          onPress={() => promptOneTap()}
+        >
+          <Text style={styles.googleBtnText}>
+            {signingIn ? 'Signing in…' : 'Sign in with Google'}
+          </Text>
+        </Pressable>
+      )}
+
+      {signingIn && (
+        <Text testID="auth-status" style={styles.subtitle}>Signing in…</Text>
+      )}
+      {error && <Text testID="auth-error" style={styles.error}>{error}</Text>}
     </View>
   );
 }
@@ -49,5 +135,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
   },
+  googleBtnDisabled: { opacity: 0.5 },
   googleBtnText: { fontSize: 15, fontWeight: '600', color: '#0f172a' },
+  error: { fontSize: 13, color: '#dc2626', maxWidth: 280, textAlign: 'center', paddingHorizontal: 16 },
 });

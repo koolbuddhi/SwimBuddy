@@ -37,11 +37,14 @@ authRouter.post('/google', async (c) => {
     .bind(payload.sub, payload.email, payload.name, now)
     .run();
 
-  // Set session cookie
+  // Set session cookie. SameSite=Lax keeps the cookie scoped to first-party
+  // and same-site contexts (localhost:8081 ↔ localhost:8787 are same-site).
+  // For true cross-site prod deployments, switch to SameSite=None; Secure.
+  const isHttps = new URL(c.req.url).protocol === 'https:';
   setCookie(c, COOKIE_NAME, payload.sub, {
     httpOnly: true,
-    secure: true,
-    sameSite: 'Strict',
+    secure: isHttps,
+    sameSite: 'Lax',
     maxAge: COOKIE_MAX_AGE,
     path: '/',
   });
