@@ -150,16 +150,29 @@ export function DrillSheet({ drill, onClose, onSave }: DrillSheetProps) {
 
           {/* time */}
           <Text style={[styles.label, { marginTop: 18 }]}>Time</Text>
-          <Pressable
-            testID="time-display"
-            style={styles.timeBox}
-            onPress={() => inputRef.current?.focus()}
-          >
-            <Text style={[styles.timeText, !timeDigits && styles.timePlaceholder]}>
-              {displayTime}
-            </Text>
-            <Text style={styles.timeHint}>MM : SS . HUNDREDTHS</Text>
-          </Pressable>
+          <View style={styles.timeBox}>
+            <Pressable
+              testID="time-display"
+              style={styles.timeTap}
+              onPress={() => inputRef.current?.focus()}
+            >
+              <Text style={[styles.timeText, !timeDigits && styles.timePlaceholder]}>
+                {displayTime}
+              </Text>
+              <Text style={styles.timeHint}>MM : SS . HUNDREDTHS</Text>
+            </Pressable>
+            {timeDigits.length > 0 && (
+              <Pressable
+                testID="time-clear-btn"
+                onPress={() => setTimeDigits('')}
+                accessibilityLabel="Clear time"
+                style={styles.timeClear}
+                hitSlop={8}
+              >
+                <Text style={styles.timeClearIcon}>✕</Text>
+              </Pressable>
+            )}
+          </View>
           {/* hidden input — onChangeText handles all digit accumulation/deletion;
               we deliberately do NOT use onKeyPress because both handlers can race
               on React Native Web and double-append the new character. */}
@@ -236,7 +249,15 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: '#0ea5e9', borderColor: '#0ea5e9' },
   chipText: { fontSize: 13, fontWeight: '700', color: '#475569' },
   chipTextActive: { color: '#fff' },
-  timeBox: { backgroundColor: '#f1f5f9', borderRadius: 14, padding: 20, alignItems: 'center', borderWidth: 2, borderColor: '#e2e8f0' },
+  timeBox: { backgroundColor: '#f1f5f9', borderRadius: 14, borderWidth: 2, borderColor: '#e2e8f0', position: 'relative' },
+  timeTap: { padding: 20, alignItems: 'center' },
+  timeClear: {
+    position: 'absolute', top: 10, right: 10,
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: '#e2e8f0',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  timeClearIcon: { fontSize: 13, color: '#475569', fontWeight: '700' },
   timeText: { fontSize: 38, fontWeight: '800', color: '#0f172a', fontVariant: ['tabular-nums'] },
   timePlaceholder: { color: '#cbd5e1' },
   timeHint: { fontSize: 10, color: '#94a3b8', marginTop: 4, fontWeight: '700', letterSpacing: 0.8 },

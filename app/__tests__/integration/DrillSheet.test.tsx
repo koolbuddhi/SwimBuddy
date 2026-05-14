@@ -116,6 +116,23 @@ describe('DrillSheet — time input digit accumulation', () => {
       expect.objectContaining({ timeCs: 9000 }),
     );
   });
+
+  it('clear button is hidden when time is empty, visible once digits are entered', () => {
+    render(<DrillSheet onClose={jest.fn()} onSave={jest.fn()} />);
+    expect(screen.queryByTestId('time-clear-btn')).toBeNull();
+    type(screen.getByTestId('time-hidden-input'), '3');
+    expect(screen.getByTestId('time-clear-btn')).toBeTruthy();
+  });
+
+  it('pressing the clear button resets the time display to 00:00.00', () => {
+    render(<DrillSheet onClose={jest.fn()} onSave={jest.fn()} />);
+    const input = screen.getByTestId('time-hidden-input');
+    type(input, '3045');
+    expect(screen.getByText('00:30.45')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('time-clear-btn'));
+    expect(screen.getByText('00:00.00')).toBeTruthy();
+    expect(screen.queryByTestId('time-clear-btn')).toBeNull();
+  });
 });
 
 describe('DrillSheet — edit mode', () => {
