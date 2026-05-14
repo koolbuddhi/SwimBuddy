@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
   info: { flex: 1, minWidth: 0 },
   title: { fontSize: 14, fontWeight: '600', color: '#0f172a' },
   labelText: { fontSize: 11, color: '#64748b', marginTop: 1 },
-  time: { fontSize: 16, fontWeight: '700', color: '#0f172a', fontVariant: ['tabular-nums'], marginRight: 4 },
+  time: { fontSize: 16, fontWeight: '700', color: '#0f172a', flexShrink: 0, marginRight: 4 },
   actions: { flexDirection: 'column', borderLeftWidth: 1, borderLeftColor: '#f1f5f9' },
   actionBtn: { flex: 1, width: 36, alignItems: 'center', justifyContent: 'center' },
   actionEdit: { fontSize: 14, color: '#64748b' },
