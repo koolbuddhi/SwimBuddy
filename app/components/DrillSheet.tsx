@@ -58,14 +58,6 @@ export function DrillSheet({ drill, onClose, onSave }: DrillSheetProps) {
   const finalDist = useCustom ? parseInt(customDist || '0', 10) : distance;
   const canSave = timeCs > 0 && finalDist > 0;
 
-  const handleKeyPress = ({ nativeEvent: { key } }: { nativeEvent: { key: string } }) => {
-    if (key === 'Backspace') {
-      setTimeDigits((prev) => prev.slice(0, -1));
-    } else if (/^[0-9]$/.test(key)) {
-      setTimeDigits((prev) => (prev + key).slice(-6));
-    }
-  };
-
   const handleSave = () => {
     if (!canSave) return;
     onSave({ strokeId, distance: finalDist, timeCs, label: label.trim() });
@@ -168,14 +160,15 @@ export function DrillSheet({ drill, onClose, onSave }: DrillSheetProps) {
             </Text>
             <Text style={styles.timeHint}>MM : SS . HUNDREDTHS</Text>
           </Pressable>
-          {/* hidden input captures key events */}
+          {/* hidden input — onChangeText handles all digit accumulation/deletion;
+              we deliberately do NOT use onKeyPress because both handlers can race
+              on React Native Web and double-append the new character. */}
           <TextInput
             ref={inputRef}
             testID="time-hidden-input"
             style={styles.hidden}
             value={timeDigits}
             onChangeText={(v) => setTimeDigits(v.replace(/\D/g, '').slice(-6))}
-            onKeyPress={handleKeyPress}
             keyboardType="numeric"
             inputMode="numeric"
           />

@@ -64,49 +64,56 @@ describe('DrillSheet — add mode', () => {
 });
 
 describe('DrillSheet — time input digit accumulation', () => {
-  it('typing digits updates the time display', () => {
-    const onSave = jest.fn();
-    render(<DrillSheet onClose={jest.fn()} onSave={onSave} />);
+  // Simulate progressive typing the way a controlled input naturally accumulates:
+  // each onChangeText receives the full accumulated value (just like a real browser).
+  const type = (input: ReturnType<typeof screen.getByTestId>, digits: string) => {
+    for (let i = 1; i <= digits.length; i++) {
+      fireEvent.changeText(input, digits.slice(0, i));
+    }
+  };
 
+  it('typing "3045" → display 00:30.45 (sub-minute, no duplication)', () => {
+    render(<DrillSheet onClose={jest.fn()} onSave={jest.fn()} />);
     const input = screen.getByTestId('time-hidden-input');
-    // Simulate typing '3045'
-    fireEvent(input, 'onKeyPress', { nativeEvent: { key: '3' } });
-    fireEvent(input, 'onKeyPress', { nativeEvent: { key: '0' } });
-    fireEvent(input, 'onKeyPress', { nativeEvent: { key: '4' } });
-    fireEvent(input, 'onKeyPress', { nativeEvent: { key: '5' } });
+    type(input, '3045');
     expect(screen.getByText('00:30.45')).toBeTruthy();
   });
 
-  it('Save is enabled after entering a positive time with a preset distance', () => {
-    const onSave = jest.fn();
-    render(<DrillSheet onClose={jest.fn()} onSave={onSave} />);
-
+  it('typing "013000" → display 01:30.00 (crosses 1-minute boundary)', () => {
+    render(<DrillSheet onClose={jest.fn()} onSave={jest.fn()} />);
     const input = screen.getByTestId('time-hidden-input');
-    fireEvent(input, 'onKeyPress', { nativeEvent: { key: '3' } });
-    fireEvent(input, 'onKeyPress', { nativeEvent: { key: '0' } });
-    fireEvent(input, 'onKeyPress', { nativeEvent: { key: '4' } });
-    fireEvent(input, 'onKeyPress', { nativeEvent: { key: '5' } });
+    type(input, '013000');
+    expect(screen.getByText('01:30.00')).toBeTruthy();
+  });
 
-    // 25M is the default distance preset — should be enough to enable Save
+  it('Save is enabled after entering a positive time with a preset distance', () => {
+    render(<DrillSheet onClose={jest.fn()} onSave={jest.fn()} />);
+    const input = screen.getByTestId('time-hidden-input');
+    type(input, '3045');
     const saveBtn = screen.getByTestId('drill-save-btn');
     expect(saveBtn.props.accessibilityState?.disabled).toBe(false);
   });
 
-  it('onSave fires with correct timeCs when Save is pressed', () => {
+  it('onSave fires with correct timeCs (sub-minute case: 3045cs)', () => {
     const onSave = jest.fn();
     render(<DrillSheet onClose={jest.fn()} onSave={onSave} />);
-
     const input = screen.getByTestId('time-hidden-input');
-    fireEvent(input, 'onKeyPress', { nativeEvent: { key: '3' } });
-    fireEvent(input, 'onKeyPress', { nativeEvent: { key: '0' } });
-    fireEvent(input, 'onKeyPress', { nativeEvent: { key: '4' } });
-    fireEvent(input, 'onKeyPress', { nativeEvent: { key: '5' } });
-
+    type(input, '3045');
     fireEvent.press(screen.getByTestId('drill-save-btn'));
-
-    expect(onSave).toHaveBeenCalledTimes(1);
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({ timeCs: 3045, distance: 25 }),
+    );
+  });
+
+  it('onSave fires with correct timeCs for times ≥ 1 minute (013000 → 9000cs)', () => {
+    // Regression test: old code stored parseInt("013000") = 13000 (2:10.00) instead of 9000 (1:30.00).
+    const onSave = jest.fn();
+    render(<DrillSheet onClose={jest.fn()} onSave={onSave} />);
+    const input = screen.getByTestId('time-hidden-input');
+    type(input, '013000');
+    fireEvent.press(screen.getByTestId('drill-save-btn'));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ timeCs: 9000 }),
     );
   });
 });
@@ -119,11 +126,19 @@ describe('DrillSheet — edit mode', () => {
     expect(screen.getByText('Edit drill')).toBeTruthy();
   });
 
-  it('pre-populates time display from drill.timeCs', () => {
+  it('pre-populates time display from drill.timeCs (sub-minute)', () => {
     render(
       <DrillSheet drill={makeDrill({ timeCs: 3045 })} onClose={jest.fn()} onSave={jest.fn()} />,
     );
     expect(screen.getByText('00:30.45')).toBeTruthy();
+  });
+
+  it('pre-populates time display from drill.timeCs (≥ 1 min — regression for csToDig)', () => {
+    // Old broken csToDig did String(9000) = "9000" → displayed "00:90.00" instead of "01:30.00".
+    render(
+      <DrillSheet drill={makeDrill({ timeCs: 9000 })} onClose={jest.fn()} onSave={jest.fn()} />,
+    );
+    expect(screen.getByText('01:30.00')).toBeTruthy();
   });
 
   it('Save is enabled immediately in edit mode (drill already has time + distance)', () => {
