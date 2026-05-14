@@ -164,7 +164,10 @@ export function DrillSheet({ drill, onClose, onSave }: DrillSheetProps) {
             {timeDigits.length > 0 && (
               <Pressable
                 testID="time-clear-btn"
-                onPress={() => setTimeDigits('')}
+                onPress={() => {
+                  setTimeDigits('');
+                  inputRef.current?.focus();
+                }}
                 accessibilityLabel="Clear time"
                 style={styles.timeClear}
                 hitSlop={8}
