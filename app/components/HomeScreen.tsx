@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SessionCard } from './SessionCard';
 import type { Session } from '../lib/types';
 
@@ -22,15 +22,24 @@ export function HomeScreen({ sessions, onOpenSession, onNewSession }: HomeScreen
           <Text style={styles.emptyHint}>Tap + to log your first session</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.list}>
-          <Text style={styles.countLabel}>{countLabel}</Text>
-          {sorted.map((s) => (
-            <SessionCard key={s.id} session={s} onClick={() => onOpenSession(s.id)} />
-          ))}
-        </ScrollView>
+        <FlatList
+          data={sorted}
+          keyExtractor={(s) => s.id}
+          contentContainerStyle={styles.list}
+          ListHeaderComponent={<Text style={styles.countLabel}>{countLabel}</Text>}
+          renderItem={({ item: s }) => (
+            <SessionCard session={s} onClick={() => onOpenSession(s.id)} />
+          )}
+        />
       )}
 
-      <Pressable testID="home-fab" style={styles.fab} onPress={onNewSession} accessibilityLabel="New session">
+      <Pressable
+        testID="home-fab"
+        style={styles.fab}
+        onPress={onNewSession}
+        accessibilityLabel="New session"
+        accessibilityRole="button"
+      >
         <Text style={styles.fabIcon}>+</Text>
       </Pressable>
     </View>
