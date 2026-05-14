@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { DrillRow } from './DrillRow';
 import { DrillSheet } from './DrillSheet';
+import { GroupContainer } from './GroupContainer';
+import { SelectionBar } from './SelectionBar';
 import { relativeDate } from '../lib/time';
 import { useSession } from '../lib/SessionContext';
 import type { Drill } from '../lib/types';
@@ -12,13 +14,32 @@ interface SessionScreenProps {
 }
 
 export function SessionScreen({ sessionId, onBack }: SessionScreenProps) {
-  const { sessions, addDrill, updateDrill, deleteDrill, deleteSession } = useSession();
+  const { sessions, addDrill, updateDrill, deleteDrill, deleteSession, saveGroup, ungroupGroup, removeGroup } =
+    useSession();
   const session = sessions.find((s) => s.id === sessionId);
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingDrill, setEditingDrill] = useState<Drill | undefined>(undefined);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   if (!session) return null;
+
+  // drillIds that belong to any group
+  const groupedDrillIds = new Set(session.groups.flatMap((g) => g.drillIds));
+  const ungroupedDrills = session.drills.filter((d) => !groupedDrillIds.has(d.id));
+
+  const toggleDrill = (drillId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(drillId)) next.delete(drillId);
+      else next.add(drillId);
+      return next;
+    });
+  };
+
+  const selectedCs = session.drills
+    .filter((d) => selectedIds.has(d.id))
+    .reduce((sum, d) => sum + d.timeCs, 0);
 
   const handleSave = async (patch: Omit<Drill, 'id' | 'createdAt'>) => {
     if (editingDrill) {
@@ -37,6 +58,7 @@ export function SessionScreen({ sessionId, onBack }: SessionScreenProps) {
   };
 
   const handleDeleteDrill = (drillId: string) => {
+    setSelectedIds((prev) => { const n = new Set(prev); n.delete(drillId); return n; });
     deleteDrill(sessionId, drillId);
   };
 
@@ -54,6 +76,11 @@ export function SessionScreen({ sessionId, onBack }: SessionScreenProps) {
     ]);
   };
 
+  const handleSaveGroup = async (name: string) => {
+    await saveGroup(sessionId, name, [...selectedIds]);
+    setSelectedIds(new Set());
+  };
+
   const dateLabel = relativeDate(session.date);
 
   return (
@@ -66,6 +93,16 @@ export function SessionScreen({ sessionId, onBack }: SessionScreenProps) {
         </Pressable>
       </View>
 
+      {/* selection bar (when drills selected) */}
+      {selectedIds.size > 0 && (
+        <SelectionBar
+          selectedCount={selectedIds.size}
+          totalCs={selectedCs}
+          onSaveGroup={handleSaveGroup}
+          onClearSelection={() => setSelectedIds(new Set())}
+        />
+      )}
+
       {/* drill list */}
       {session.drills.length === 0 ? (
         <View testID="session-empty-state" style={styles.empty}>
@@ -74,12 +111,31 @@ export function SessionScreen({ sessionId, onBack }: SessionScreenProps) {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.list}>
-          {session.drills.map((d) => (
+          {/* grouped drills */}
+          {session.groups.map((g) => {
+            const groupDrills = g.drillIds
+              .map((id) => session.drills.find((d) => d.id === id))
+              .filter((d): d is Drill => d !== undefined);
+            return (
+              <GroupContainer
+                key={g.id}
+                group={g}
+                drills={groupDrills}
+                onUngroup={() => ungroupGroup(sessionId, g.id)}
+                onRemoveGroup={() => removeGroup(sessionId, g.id)}
+                onEditDrill={handleEdit}
+                onDeleteDrill={(drillId) => handleDeleteDrill(drillId)}
+              />
+            );
+          })}
+
+          {/* ungrouped drills */}
+          {ungroupedDrills.map((d) => (
             <DrillRow
               key={d.id}
               drill={d}
-              selected={false}
-              onToggle={() => {}}
+              selected={selectedIds.has(d.id)}
+              onToggle={() => toggleDrill(d.id)}
               onEdit={() => handleEdit(d)}
               onDelete={() => handleDeleteDrill(d.id)}
             />

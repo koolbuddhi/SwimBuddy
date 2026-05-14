@@ -32,15 +32,21 @@ const mockContext = (session: Session) => {
   const updateDrill = jest.fn().mockResolvedValue(undefined);
   const deleteDrill = jest.fn().mockResolvedValue(undefined);
   const deleteSession = jest.fn().mockResolvedValue(undefined);
+  const saveGroup = jest.fn().mockResolvedValue(undefined);
+  const ungroupGroup = jest.fn().mockResolvedValue(undefined);
+  const removeGroup = jest.fn().mockResolvedValue(undefined);
   mockUseSession.mockReturnValue({
     sessions: [session],
     addDrill,
     updateDrill,
     deleteDrill,
     deleteSession,
+    saveGroup,
+    ungroupGroup,
+    removeGroup,
     createSession: jest.fn(),
   });
-  return { addDrill, updateDrill, deleteDrill, deleteSession };
+  return { addDrill, updateDrill, deleteDrill, deleteSession, saveGroup, ungroupGroup, removeGroup };
 };
 
 describe('SessionScreen', () => {
@@ -96,5 +102,74 @@ describe('SessionScreen', () => {
     expect(deleteSession).toHaveBeenCalledWith('s1');
     expect(onBack).toHaveBeenCalled();
     alertSpy.mockRestore();
+  });
+
+  // ── Group wiring (T14) ────────────────────────────────────────────────────────
+
+  it('selecting a drill shows the SelectionBar', () => {
+    mockContext(makeSession());
+    render(<SessionScreen sessionId="s1" onBack={jest.fn()} />);
+    fireEvent.press(screen.getAllByTestId('drill-row-main')[0]);
+    expect(screen.getByText(/1 selected/)).toBeTruthy();
+  });
+
+  it('SelectionBar shows correct total time for selected drills', () => {
+    mockContext(makeSession());
+    render(<SessionScreen sessionId="s1" onBack={jest.fn()} />);
+    // select d1 (1845 cs) — time appears in DrillRow AND SelectionBar
+    fireEvent.press(screen.getAllByTestId('drill-row-main')[0]);
+    expect(screen.getAllByText('00:18.45').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('calls saveGroup with selected drillIds and name', async () => {
+    const { saveGroup } = mockContext(makeSession());
+    render(<SessionScreen sessionId="s1" onBack={jest.fn()} />);
+    // select both drills
+    fireEvent.press(screen.getAllByTestId('drill-row-main')[0]);
+    fireEvent.press(screen.getAllByTestId('drill-row-main')[1]);
+    // tap "Group" button in SelectionBar
+    fireEvent.press(screen.getByTestId('selection-save-btn'));
+    // type group name and confirm
+    fireEvent.changeText(screen.getByTestId('group-name-input'), 'Sprint Set');
+    await act(async () => { fireEvent.press(screen.getByTestId('group-name-confirm-btn')); });
+    expect(saveGroup).toHaveBeenCalledWith('s1', 'Sprint Set', expect.arrayContaining(['d1', 'd2']));
+  });
+
+  it('renders GroupContainer for existing groups', () => {
+    const session = makeSession({
+      groups: [{ id: 'g1', name: 'IM Set', drillIds: ['d1', 'd2'], createdAt: '' }],
+    });
+    mockContext(session);
+    render(<SessionScreen sessionId="s1" onBack={jest.fn()} />);
+    expect(screen.getByText('IM Set')).toBeTruthy();
+    expect(screen.getByTestId('group-header')).toBeTruthy();
+  });
+
+  it('calls ungroupGroup when group ungroup button pressed', async () => {
+    const session = makeSession({
+      groups: [{ id: 'g1', name: 'IM Set', drillIds: ['d1', 'd2'], createdAt: '' }],
+    });
+    const { ungroupGroup } = mockContext(session);
+    render(<SessionScreen sessionId="s1" onBack={jest.fn()} />);
+    await act(async () => { fireEvent.press(screen.getByTestId('group-ungroup-btn')); });
+    expect(ungroupGroup).toHaveBeenCalledWith('s1', 'g1');
+  });
+
+  it('calls removeGroup when group remove button pressed', async () => {
+    const session = makeSession({
+      groups: [{ id: 'g1', name: 'IM Set', drillIds: ['d1', 'd2'], createdAt: '' }],
+    });
+    const { removeGroup } = mockContext(session);
+    render(<SessionScreen sessionId="s1" onBack={jest.fn()} />);
+    await act(async () => { fireEvent.press(screen.getByTestId('group-remove-btn')); });
+    expect(removeGroup).toHaveBeenCalledWith('s1', 'g1');
+  });
+
+  it('clearing selection via SelectionBar hides it', () => {
+    mockContext(makeSession());
+    render(<SessionScreen sessionId="s1" onBack={jest.fn()} />);
+    fireEvent.press(screen.getAllByTestId('drill-row-main')[0]);
+    fireEvent.press(screen.getByTestId('selection-clear-btn'));
+    expect(screen.queryByText(/selected/)).toBeNull();
   });
 });

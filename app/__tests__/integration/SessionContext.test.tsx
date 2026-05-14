@@ -141,4 +141,95 @@ describe('SessionContext', () => {
     expect(() => renderHook(() => useSession())).toThrow();
     spy.mockRestore();
   });
+
+  // ── Group operations ──────────────────────────────────────────────────────────
+
+  it('saveGroup adds a group with the given drillIds', async () => {
+    const session = {
+      ...makeSession('s1'),
+      drills: [
+        { id: 'd1', strokeId: 'fly' as const, distance: 25, timeCs: 1000, label: '', createdAt: '' },
+        { id: 'd2', strokeId: 'back' as const, distance: 50, timeCs: 2000, label: '', createdAt: '' },
+      ],
+    };
+    mockDB.getSessions.mockResolvedValue([session]);
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await act(async () => {});
+
+    await act(async () => {
+      await result.current.saveGroup('s1', 'Sprint Set', ['d1', 'd2']);
+    });
+
+    const s = result.current.sessions.find((x) => x.id === 's1')!;
+    expect(s.groups).toHaveLength(1);
+    expect(s.groups[0].name).toBe('Sprint Set');
+    expect(s.groups[0].drillIds).toEqual(['d1', 'd2']);
+  });
+
+  it('ungroupGroup removes the group but keeps drills', async () => {
+    const session = {
+      ...makeSession('s1'),
+      drills: [
+        { id: 'd1', strokeId: 'fly' as const, distance: 25, timeCs: 1000, label: '', createdAt: '' },
+      ],
+      groups: [{ id: 'g1', name: 'Set', drillIds: ['d1'], createdAt: '' }],
+    };
+    mockDB.getSessions.mockResolvedValue([session]);
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await act(async () => {});
+
+    await act(async () => {
+      await result.current.ungroupGroup('s1', 'g1');
+    });
+
+    const s = result.current.sessions.find((x) => x.id === 's1')!;
+    expect(s.groups).toHaveLength(0);
+    expect(s.drills).toHaveLength(1);
+  });
+
+  it('removeGroup removes the group and its drills', async () => {
+    const session = {
+      ...makeSession('s1'),
+      drills: [
+        { id: 'd1', strokeId: 'fly' as const, distance: 25, timeCs: 1000, label: '', createdAt: '' },
+        { id: 'd2', strokeId: 'back' as const, distance: 50, timeCs: 2000, label: '', createdAt: '' },
+        { id: 'd3', strokeId: 'free' as const, distance: 25, timeCs: 1500, label: '', createdAt: '' },
+      ],
+      groups: [{ id: 'g1', name: 'Set', drillIds: ['d1', 'd2'], createdAt: '' }],
+    };
+    mockDB.getSessions.mockResolvedValue([session]);
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await act(async () => {});
+
+    await act(async () => {
+      await result.current.removeGroup('s1', 'g1');
+    });
+
+    const s = result.current.sessions.find((x) => x.id === 's1')!;
+    expect(s.groups).toHaveLength(0);
+    expect(s.drills.map((d) => d.id)).toEqual(['d3']);
+  });
+
+  it('deleteDrill auto-deletes group when it would have fewer than 2 drills', async () => {
+    const session = {
+      ...makeSession('s1'),
+      drills: [
+        { id: 'd1', strokeId: 'fly' as const, distance: 25, timeCs: 1000, label: '', createdAt: '' },
+        { id: 'd2', strokeId: 'back' as const, distance: 50, timeCs: 2000, label: '', createdAt: '' },
+      ],
+      groups: [{ id: 'g1', name: 'Set', drillIds: ['d1', 'd2'], createdAt: '' }],
+    };
+    mockDB.getSessions.mockResolvedValue([session]);
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await act(async () => {});
+
+    // deleting d1 leaves d2 alone in the group → auto-delete group
+    await act(async () => {
+      await result.current.deleteDrill('s1', 'd1');
+    });
+
+    const s = result.current.sessions.find((x) => x.id === 's1')!;
+    expect(s.groups).toHaveLength(0);
+    expect(s.drills.map((d) => d.id)).toEqual(['d2']);
+  });
 });
