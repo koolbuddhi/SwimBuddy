@@ -94,11 +94,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const deleteDrill = async (sessionId: string, drillId: string): Promise<void> => {
     await updateSession(sessionId, (s) => {
       const drills = s.drills.filter((d) => d.id !== drillId);
-      // auto-delete groups that now have fewer than 2 drills
-      const groups = s.groups.filter((g) => {
-        const remaining = g.drillIds.filter((id) => id !== drillId);
-        return remaining.length >= 2;
-      }).map((g) => ({ ...g, drillIds: g.drillIds.filter((id) => id !== drillId) }));
+      // Remove the deleted drill from every group; drop a group only when it
+      // becomes completely empty (so partial groups survive for the user to
+      // refill — they can still tap "Ungroup" to dissolve it manually).
+      const groups = s.groups
+        .map((g) => ({ ...g, drillIds: g.drillIds.filter((id) => id !== drillId) }))
+        .filter((g) => g.drillIds.length > 0);
       return { ...s, drills, groups };
     });
   };

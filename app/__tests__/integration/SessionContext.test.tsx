@@ -210,7 +210,7 @@ describe('SessionContext', () => {
     expect(s.drills.map((d) => d.id)).toEqual(['d3']);
   });
 
-  it('deleteDrill auto-deletes group when it would have fewer than 2 drills', async () => {
+  it('deleteDrill keeps the group when at least one drill remains in it', async () => {
     const session = {
       ...makeSession('s1'),
       drills: [
@@ -223,13 +223,35 @@ describe('SessionContext', () => {
     const { result } = renderHook(() => useSession(), { wrapper });
     await act(async () => {});
 
-    // deleting d1 leaves d2 alone in the group → auto-delete group
+    // deleting d1 leaves d2 in the group — group survives as a single-drill group
+    await act(async () => {
+      await result.current.deleteDrill('s1', 'd1');
+    });
+
+    const s = result.current.sessions.find((x) => x.id === 's1')!;
+    expect(s.groups).toHaveLength(1);
+    expect(s.groups[0].drillIds).toEqual(['d2']);
+    expect(s.drills.map((d) => d.id)).toEqual(['d2']);
+  });
+
+  it('deleteDrill removes the group once it becomes empty', async () => {
+    const session = {
+      ...makeSession('s1'),
+      drills: [
+        { id: 'd1', strokeId: 'fly' as const, distance: 25, timeCs: 1000, label: '', createdAt: '' },
+      ],
+      groups: [{ id: 'g1', name: 'Set', drillIds: ['d1'], createdAt: '' }],
+    };
+    mockDB.getSessions.mockResolvedValue([session]);
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await act(async () => {});
+
     await act(async () => {
       await result.current.deleteDrill('s1', 'd1');
     });
 
     const s = result.current.sessions.find((x) => x.id === 's1')!;
     expect(s.groups).toHaveLength(0);
-    expect(s.drills.map((d) => d.id)).toEqual(['d2']);
+    expect(s.drills).toHaveLength(0);
   });
 });
