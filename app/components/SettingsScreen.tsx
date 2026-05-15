@@ -2,9 +2,11 @@ import React from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../lib/auth';
 import { useSession } from '../lib/SessionContext';
+import * as XLSX from 'xlsx';
 import { sessionToCSV } from '../lib/export/csv';
 import { sessionToJSON } from '../lib/export/json';
-import { shareCSV } from '../lib/export/share';
+import { shareCSV, shareBinary } from '../lib/export/share';
+import { csToTime } from '../lib/time';
 
 export function SettingsScreen() {
   const { user, signOut } = useAuth();
@@ -32,6 +34,41 @@ export function SettingsScreen() {
     await shareCSV(json, 'swimbuddy_export.json');
   };
 
+  const handleExportExcel = async () => {
+    if (sessions.length === 0) {
+      Alert.alert('No sessions', 'Log some sessions before exporting.');
+      return;
+    }
+    // Single workbook with one "All drills" sheet (every drill, dated) plus
+    // a per-session "Summary" sheet listing date / drill count / total time.
+    const STROKE_NAMES: Record<string, string> = {
+      fly: 'Butterfly', back: 'Backstroke', breast: 'Breaststroke', free: 'Freestyle', mixed: 'Mixed',
+    };
+    const allDrillRows: unknown[][] = [['Date', 'Stroke', 'Distance (m)', 'Time', 'Label', 'Group']];
+    const summaryRows: unknown[][] = [['Date', 'Drills', 'Groups', 'Total time']];
+    for (const s of sessions) {
+      const totalCs = s.drills.reduce((sum, d) => sum + d.timeCs, 0);
+      const drillIdToGroup = new Map<string, string>();
+      for (const g of s.groups) for (const id of g.drillIds) drillIdToGroup.set(id, g.name);
+      for (const d of s.drills) {
+        allDrillRows.push([
+          s.date,
+          STROKE_NAMES[d.strokeId] ?? d.strokeId,
+          d.distance,
+          csToTime(d.timeCs),
+          d.label,
+          drillIdToGroup.get(d.id) ?? '',
+        ]);
+      }
+      summaryRows.push([s.date, s.drills.length, s.groups.length, csToTime(totalCs)]);
+    }
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryRows), 'Summary');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(allDrillRows), 'All drills');
+    const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
+    await shareBinary(buffer, 'swimbuddy_export.xlsx');
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       {/* Account section */}
@@ -51,6 +88,9 @@ export function SettingsScreen() {
       {/* Export section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Export</Text>
+        <Pressable testID="export-excel-btn" style={styles.btn} onPress={handleExportExcel}>
+          <Text style={styles.btnText}>Export all as Excel</Text>
+        </Pressable>
         <Pressable testID="export-csv-btn" style={styles.btn} onPress={handleExportCSV}>
           <Text style={styles.btnText}>Export as CSV</Text>
         </Pressable>

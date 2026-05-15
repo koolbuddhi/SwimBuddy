@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { DrillRow } from './DrillRow';
 import { DrillSheet } from './DrillSheet';
 import { GroupContainer } from './GroupContainer';
 import { SelectionBar } from './SelectionBar';
 import { relativeDate } from '../lib/time';
 import { useSession } from '../lib/SessionContext';
+import { sessionToExcel } from '../lib/export/excel';
+import { shareBinary } from '../lib/export/share';
 import type { Drill } from '../lib/types';
 
 interface SessionScreenProps {
@@ -98,20 +101,40 @@ export function SessionScreen({ sessionId, onBack }: SessionScreenProps) {
     setDateEditOpen(false);
   };
 
+  const handleExportExcel = async () => {
+    if (!session) return;
+    if (session.drills.length === 0) {
+      Alert.alert('Nothing to export', 'Log at least one drill before exporting.');
+      return;
+    }
+    try {
+      const buffer = await sessionToExcel(session);
+      await shareBinary(buffer, `swimbuddy_${session.date}.xlsx`);
+    } catch (e) {
+      Alert.alert('Export failed', e instanceof Error ? e.message : 'Unknown error');
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* header */}
       <View style={styles.header}>
         <Pressable testID="session-back-btn" onPress={onBack} style={styles.backBtn} accessibilityLabel="Back to sessions" hitSlop={8}>
-          <Text style={styles.backBtnText}>← Sessions</Text>
+          <Ionicons name="chevron-back" size={18} color="#0ea5e9" />
+          <Text style={styles.backBtnText}>Sessions</Text>
         </Pressable>
         <Pressable testID="session-date-btn" onPress={openDateEditor} style={styles.titleBtn} accessibilityLabel="Change session date">
           <Text style={styles.title}>{dateLabel}</Text>
           <Text style={styles.titleHint}>{session.date}</Text>
         </Pressable>
-        <Pressable testID="session-delete-btn" onPress={handleDeleteSession} style={styles.deleteBtn} accessibilityLabel="Delete session">
-          <Text style={styles.deleteBtnText}>Delete</Text>
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable testID="session-export-btn" onPress={handleExportExcel} style={styles.iconBtn} accessibilityLabel="Export to Excel" hitSlop={6}>
+            <Ionicons name="download-outline" size={20} color="#0ea5e9" />
+          </Pressable>
+          <Pressable testID="session-delete-btn" onPress={handleDeleteSession} style={styles.iconBtn} accessibilityLabel="Delete session" hitSlop={6}>
+            <Ionicons name="trash-outline" size={20} color="#dc2626" />
+          </Pressable>
+        </View>
       </View>
 
       {/* selection bar (when drills selected) */}
@@ -233,10 +256,10 @@ const styles = StyleSheet.create({
   titleBtn: { flex: 1, alignItems: 'center', paddingHorizontal: 6 },
   title: { fontSize: 18, fontWeight: '700', color: '#0f172a' },
   titleHint: { fontSize: 11, color: '#94a3b8', marginTop: 1 },
-  backBtn: { paddingHorizontal: 8, paddingVertical: 6 },
+  backBtn: { paddingHorizontal: 4, paddingVertical: 6, flexDirection: 'row', alignItems: 'center' },
   backBtnText: { fontSize: 14, fontWeight: '600', color: '#0ea5e9' },
-  deleteBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#fef2f2' },
-  deleteBtnText: { fontSize: 13, fontWeight: '600', color: '#dc2626' },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  iconBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
   dateBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(15,23,42,0.5)' },
   dateCard: {
     position: 'absolute', top: '30%', left: 24, right: 24,
