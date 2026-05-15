@@ -51,15 +51,20 @@ export function AuthScreen() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ idToken: credential }),
             });
-            if (!r.ok) throw new Error(`Sign-in failed (${r.status})`);
-            const user = await r.json();
-            await signIn({ id: user.id, email: user.email, name: user.name ?? user.email });
+            const body = await r.json().catch(() => null);
+            if (!r.ok) {
+              throw new Error(`Sign-in failed (${r.status}): ${body?.detail ?? body?.error ?? 'unknown'}`);
+            }
+            await signIn({ id: body.id, email: body.email, name: body.name ?? body.email });
           } catch (e) {
             setError(e instanceof Error ? e.message : 'Sign-in failed');
             setSigningIn(false);
           }
         });
         setGisReady(true);
+        // Also fire the FedCM-backed One Tap prompt. This doesn't need a popup;
+        // Chrome shows its native account chooser (top-right) for signed-in users.
+        try { promptOneTap(); } catch {/* prompt is best-effort */}
       })
       .catch((e) => setError(e.message));
   }, [signIn]);

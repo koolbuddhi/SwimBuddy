@@ -22,8 +22,10 @@ authRouter.post('/google', async (c) => {
   let payload;
   try {
     payload = await verifyGoogleToken(body.idToken, audience);
-  } catch {
-    return c.json({ error: 'Invalid token' }, 401);
+  } catch (e) {
+    // Surface the underlying jose error in dev so misconfigurations
+    // (audience mismatch, missing env var, etc.) are easy to spot.
+    return c.json({ error: 'Invalid token', detail: e instanceof Error ? e.message : String(e) }, 401);
   }
 
   const now = new Date().toISOString();

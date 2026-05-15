@@ -7,9 +7,16 @@ declare global {
     google?: {
       accounts: {
         id: {
-          initialize(config: { client_id: string; callback: (response: { credential: string }) => void; auto_select?: boolean }): void;
+          initialize(config: {
+            client_id: string;
+            callback: (response: { credential: string }) => void;
+            auto_select?: boolean;
+            ux_mode?: 'popup' | 'redirect';
+            login_uri?: string;
+            use_fedcm_for_prompt?: boolean;
+          }): void;
           prompt(): void;
-          renderButton(element: HTMLElement, options: { theme: string; size: string; text?: string }): void;
+          renderButton(element: HTMLElement, options: { theme: string; size: string; text?: string; type?: 'standard' | 'icon'; click_listener?: () => void }): void;
         };
       };
     };
@@ -23,7 +30,9 @@ export function initGoogleAuth(
   window.google!.accounts.id.initialize({
     client_id: clientId,
     callback,
-    auto_select: true,
+    // FedCM uses Chrome's native account chooser API — no popup required.
+    // Falls back to a redirect-style flow on browsers that don't support FedCM.
+    use_fedcm_for_prompt: true,
   });
 }
 
