@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ConfirmDialog } from './ConfirmDialog';
 import { DrillRow } from './DrillRow';
@@ -26,7 +26,7 @@ interface SessionScreenProps {
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export function SessionScreen({ sessionId, onBack }: SessionScreenProps) {
-  const { sessions, updateSession, addDrill, updateDrill, deleteDrill, deleteSession, saveGroup, ungroupGroup, removeGroup } =
+  const { sessions, sync, syncing, updateSession, addDrill, updateDrill, deleteDrill, deleteSession, saveGroup, ungroupGroup, removeGroup } =
     useSession();
   const session = sessions.find((s) => s.id === sessionId);
 
@@ -67,9 +67,18 @@ export function SessionScreen({ sessionId, onBack }: SessionScreenProps) {
     setEditingDrill(undefined);
   };
 
+  const openSheetForNewDrill = () => {
+    setEditingDrill(undefined);
+    setSheetOpen(true);
+    // Fire-and-forget sync so the user is working with the latest data
+    // (e.g. drills the partner phone already logged for this session).
+    sync();
+  };
+
   const handleEdit = (drill: Drill) => {
     setEditingDrill(drill);
     setSheetOpen(true);
+    sync();
   };
 
   const handleDeleteDrill = (drillId: string) => {
@@ -165,7 +174,10 @@ export function SessionScreen({ sessionId, onBack }: SessionScreenProps) {
           <Text style={styles.emptyHint}>Tap + to add your first drill</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.list}>
+        <ScrollView
+          contentContainerStyle={styles.list}
+          refreshControl={<RefreshControl refreshing={syncing} onRefresh={sync} tintColor="#0ea5e9" />}
+        >
           {/* grouped drills */}
           {session.groups.map((g) => {
             const groupDrills = g.drillIds
@@ -202,7 +214,7 @@ export function SessionScreen({ sessionId, onBack }: SessionScreenProps) {
       <Pressable
         testID="session-add-fab"
         style={styles.fab}
-        onPress={() => { setEditingDrill(undefined); setSheetOpen(true); }}
+        onPress={openSheetForNewDrill}
         accessibilityLabel="Add drill"
       >
         <Text style={styles.fabIcon}>+</Text>

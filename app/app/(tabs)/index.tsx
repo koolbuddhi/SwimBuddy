@@ -5,7 +5,7 @@ import { useSession } from '../../lib/SessionContext';
 
 export default function HomeRoute() {
   const router = useRouter();
-  const { sessions, createSession } = useSession();
+  const { sessions, createSession, sync, syncing } = useSession();
 
   const handleNewSession = async () => {
     const session = await createSession();
@@ -17,6 +17,8 @@ export default function HomeRoute() {
       sessions={sessions}
       onOpenSession={(id) => router.push(`/session/${id}`)}
       onNewSession={handleNewSession}
+      onRefresh={sync}
+      refreshing={syncing}
     />
   );
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SessionCard } from './SessionCard';
 import type { Session } from '../lib/types';
 
@@ -7,12 +7,18 @@ interface HomeScreenProps {
   sessions: Session[];
   onOpenSession: (id: string) => void;
   onNewSession: () => void;
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }
 
-export function HomeScreen({ sessions, onOpenSession, onNewSession }: HomeScreenProps) {
+export function HomeScreen({ sessions, onOpenSession, onNewSession, onRefresh, refreshing }: HomeScreenProps) {
   const sorted = [...sessions].sort((a, b) => b.date.localeCompare(a.date));
   const count = sessions.length;
   const countLabel = `${count} session${count !== 1 ? 's' : ''}`;
+
+  const refreshControl = onRefresh
+    ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor="#0ea5e9" />
+    : undefined;
 
   return (
     <View style={styles.container}>
@@ -30,6 +36,7 @@ export function HomeScreen({ sessions, onOpenSession, onNewSession }: HomeScreen
           renderItem={({ item: s }) => (
             <SessionCard session={s} onClick={() => onOpenSession(s.id)} />
           )}
+          refreshControl={refreshControl}
         />
       )}
 
