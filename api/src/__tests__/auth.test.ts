@@ -24,8 +24,8 @@ const mockEnv = {
   GOOGLE_CLIENT_ID: 'test-client-id',
 };
 
-const post = (path: string, body: unknown) =>
-  app.request(path, {
+const post = (urlOrPath: string, body: unknown) =>
+  app.request(urlOrPath, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -74,6 +74,30 @@ describe('POST /auth/google', () => {
     await post('/auth/google', { idToken: 'valid-token' });
     expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO users'));
     expect(mockBind).toHaveBeenCalledWith('google-uid-123', 'coach@example.com', 'Coach Joe', expect.any(String));
+  });
+
+  // Regression: production app + API live on different eTLD+1 (pages.dev vs
+  // workers.dev), so every /sync fetch is cross-site. SameSite=Lax cookies
+  // are NOT sent on cross-site fetches → /sync would 401 forever. The cookie
+  // must be SameSite=None; Secure when set over HTTPS.
+  it('sets SameSite=None; Secure when request is over HTTPS (cross-site prod)', async () => {
+    mockJwtVerify.mockResolvedValueOnce({
+      payload: { sub: 'u1', email: 'a@b.com', name: 'A' },
+    });
+    const res = await post('https://api.example.com/auth/google', { idToken: 'ok' });
+    const setCookie = res.headers.get('set-cookie') ?? '';
+    expect(setCookie).toMatch(/SameSite=None/i);
+    expect(setCookie).toMatch(/Secure/i);
+  });
+
+  it('sets SameSite=Lax (no Secure) when request is over HTTP (local dev)', async () => {
+    mockJwtVerify.mockResolvedValueOnce({
+      payload: { sub: 'u1', email: 'a@b.com', name: 'A' },
+    });
+    const res = await post('http://localhost/auth/google', { idToken: 'ok' });
+    const setCookie = res.headers.get('set-cookie') ?? '';
+    expect(setCookie).toMatch(/SameSite=Lax/i);
+    expect(setCookie).not.toMatch(/Secure/i);
   });
 });
 

@@ -39,14 +39,18 @@ authRouter.post('/google', async (c) => {
     .bind(payload.sub, payload.email, payload.name, now)
     .run();
 
-  // Set session cookie. SameSite=Lax keeps the cookie scoped to first-party
-  // and same-site contexts (localhost:8081 ↔ localhost:8787 are same-site).
-  // For true cross-site prod deployments, switch to SameSite=None; Secure.
+  // Set session cookie.
+  // - Production: app (pages.dev) and API (workers.dev) live on different
+  //   eTLD+1, so every fetch is cross-site. Cross-site cookies require
+  //   SameSite=None; Secure or the browser refuses to send them.
+  // - Local dev: both run on localhost (different ports = same site), so
+  //   SameSite=Lax works and Secure must be off because the dev server
+  //   speaks HTTP.
   const isHttps = new URL(c.req.url).protocol === 'https:';
   setCookie(c, COOKIE_NAME, payload.sub, {
     httpOnly: true,
     secure: isHttps,
-    sameSite: 'Lax',
+    sameSite: isHttps ? 'None' : 'Lax',
     maxAge: COOKIE_MAX_AGE,
     path: '/',
   });
