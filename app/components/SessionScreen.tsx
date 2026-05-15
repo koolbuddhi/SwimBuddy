@@ -9,6 +9,7 @@ import { relativeDate } from '../lib/time';
 import { useSession } from '../lib/SessionContext';
 import { sessionToExcel } from '../lib/export/excel';
 import { shareBinary } from '../lib/export/share';
+import { confirmDestructive } from '../lib/confirm';
 import type { Drill } from '../lib/types';
 
 interface SessionScreenProps {
@@ -65,31 +66,17 @@ export function SessionScreen({ sessionId, onBack }: SessionScreenProps) {
   };
 
   const handleDeleteDrill = (drillId: string) => {
-    Alert.alert('Delete drill?', 'This drill will be removed from the session.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => {
-          setSelectedIds((prev) => { const n = new Set(prev); n.delete(drillId); return n; });
-          deleteDrill(sessionId, drillId);
-        },
-      },
-    ]);
+    confirmDestructive('Delete drill?', 'This drill will be removed from the session.', () => {
+      setSelectedIds((prev) => { const n = new Set(prev); n.delete(drillId); return n; });
+      deleteDrill(sessionId, drillId);
+    });
   };
 
   const handleDeleteSession = () => {
-    Alert.alert('Delete session', 'This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          await deleteSession(sessionId);
-          onBack();
-        },
-      },
-    ]);
+    confirmDestructive('Delete session', 'This cannot be undone.', async () => {
+      await deleteSession(sessionId);
+      onBack();
+    });
   };
 
   const handleSaveGroup = async (name: string) => {
