@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { csToTime } from '../lib/time';
 import type { Drill, StrokeId } from '../lib/types';
 
@@ -70,17 +71,19 @@ export function DrillRow({ drill, selected, onToggle, onEdit, onDelete }: DrillR
           testID="drill-edit-btn"
           onPress={onEdit}
           accessibilityLabel="Edit drill"
-          style={styles.actionBtn}
+          style={({ pressed }) => [styles.actionBtn, pressed && styles.actionPressed]}
+          hitSlop={4}
         >
-          <Text style={styles.actionEdit}>✎</Text>
+          <Ionicons name="pencil" size={18} color="#0ea5e9" />
         </Pressable>
         <Pressable
           testID="drill-delete-btn"
           onPress={onDelete}
           accessibilityLabel="Delete drill"
-          style={styles.actionBtn}
+          style={({ pressed }) => [styles.actionBtn, pressed && styles.actionPressed]}
+          hitSlop={4}
         >
-          <Text style={styles.actionDelete}>🗑</Text>
+          <Ionicons name="trash-outline" size={18} color="#dc2626" />
         </Pressable>
       </View>
     </View>
@@ -129,7 +132,6 @@ const styles = StyleSheet.create({
   labelText: { fontSize: 11, color: '#64748b', marginTop: 1 },
   time: { fontSize: 16, fontWeight: '700', color: '#0f172a', flexShrink: 0, marginRight: 4 },
   actions: { flexDirection: 'column', borderLeftWidth: 1, borderLeftColor: '#f1f5f9' },
-  actionBtn: { flex: 1, width: 36, alignItems: 'center', justifyContent: 'center' },
-  actionEdit: { fontSize: 14, color: '#64748b' },
-  actionDelete: { fontSize: 14 },
+  actionBtn: { flex: 1, width: 40, alignItems: 'center', justifyContent: 'center' },
+  actionPressed: { backgroundColor: '#f1f5f9' },
 });
