@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
   hidden: { position: 'absolute', opacity: 0, width: 1, height: 1 },
   hint: { fontSize: 11, color: '#94a3b8', marginTop: 6, textAlign: 'center' },
   textInput: { width: '100%', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#e2e8f0', fontSize: 14, color: '#0f172a', backgroundColor: '#fff', marginTop: 4 },
-  saveBtn: { marginTop: 22, backgroundColor: '#0ea5e9', borderRadius: 12, padding: 14, alignItems: 'center', shadowColor: '#0284c7', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 8 },
+  saveBtn: { marginTop: 22, backgroundColor: '#0ea5e9', borderRadius: 12, padding: 14, alignItems: 'center', boxShadow: '0px 6px 8px rgba(2, 132, 199, 0.3)' },
   saveBtnDisabled: { opacity: 0.4 },
   saveBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
 });

@@ -101,10 +101,7 @@ const styles = StyleSheet.create({
   rowSelected: {
     borderColor: '#0ea5e9',
     backgroundColor: '#f0f9ff',
-    shadowColor: '#0ea5e9',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 1,
+    boxShadow: '0px 0px 1px rgba(14, 165, 233, 0.3)',
   },
   main: {
     flex: 1,

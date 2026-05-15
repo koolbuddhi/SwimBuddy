@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
     width: 56, height: 56, borderRadius: 28,
     backgroundColor: '#0ea5e9',
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#0ea5e9', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 6,
+    boxShadow: '0px 4px 8px rgba(14, 165, 233, 0.4)', elevation: 6,
   },
   fabIcon: { fontSize: 28, color: '#fff', lineHeight: 32 },
 });
