@@ -3,11 +3,18 @@
 const CACHE = 'swimbuddy-v1';
 const SYNC_TAG = 'swimbuddy-sync';
 
-// Install: cache the app shell
+// Install: cache the app shell. Use add() per URL (not addAll) so a single
+// 404 doesn't reject the entire install — Expo Router serves '/' but not
+// '/index.html', and we don't want one missing entry to brick the SW.
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE).then((cache) =>
-      cache.addAll(['/', '/index.html']),
+      Promise.allSettled([
+        cache.add('/'),
+        cache.add('/manifest.json'),
+        cache.add('/icons/icon-192.png'),
+        cache.add('/icons/icon-512.png'),
+      ]),
     ),
   );
   self.skipWaiting();
