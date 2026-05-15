@@ -102,6 +102,31 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     };
   }, [sync]);
 
+  // Periodic background poll. Only runs while the tab is visible so a parked
+  // tab on another device doesn't drain battery / hammer the Worker. 30 s is
+  // a good middle ground for family use — fast enough that the second phone
+  // catches up while the first is still mid-session, slow enough that it
+  // doesn't matter for the Workers free tier.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !user) return;
+    const POLL_MS = 30_000;
+    let id: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (id != null) return;
+      id = setInterval(() => { sync(); }, POLL_MS);
+    };
+    const stop = () => {
+      if (id != null) { clearInterval(id); id = null; }
+    };
+    if (document.visibilityState === 'visible') start();
+    const onVis = () => (document.visibilityState === 'visible' ? start() : stop());
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      stop();
+    };
+  }, [sync, user?.id]);
+
   const queueOp = (op: Parameters<typeof localDB.queueMutation>[0]) => {
     localDB.queueMutation(op);
     setPendingCount((n) => n + 1);
