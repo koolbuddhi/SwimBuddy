@@ -68,13 +68,30 @@ describe('SessionScreen', () => {
     expect(screen.getByTestId('session-empty-state')).toBeTruthy();
   });
 
-  it('calls deleteDrill when drill delete button is pressed', async () => {
+  it('shows Alert and calls deleteDrill when the destructive button is pressed', async () => {
     const session = makeSession();
     const { deleteDrill } = mockContext(session);
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation((_title, _msg, buttons) => {
+      buttons?.find((b) => b.style === 'destructive')?.onPress?.();
+    });
     render(<SessionScreen sessionId="s1" onBack={jest.fn()} />);
     const deleteBtns = screen.getAllByTestId('drill-delete-btn');
     await act(async () => { fireEvent.press(deleteBtns[0]); });
+    expect(alertSpy).toHaveBeenCalled();
     expect(deleteDrill).toHaveBeenCalledWith('s1', 'd1');
+    alertSpy.mockRestore();
+  });
+
+  it('cancels delete without calling deleteDrill when Cancel is pressed', async () => {
+    const session = makeSession();
+    const { deleteDrill } = mockContext(session);
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation((_title, _msg, buttons) => {
+      buttons?.find((b) => b.style === 'cancel')?.onPress?.();
+    });
+    render(<SessionScreen sessionId="s1" onBack={jest.fn()} />);
+    await act(async () => { fireEvent.press(screen.getAllByTestId('drill-delete-btn')[0]); });
+    expect(deleteDrill).not.toHaveBeenCalled();
+    alertSpy.mockRestore();
   });
 
   it('add FAB exists', () => {

@@ -65,8 +65,17 @@ export function SessionScreen({ sessionId, onBack }: SessionScreenProps) {
   };
 
   const handleDeleteDrill = (drillId: string) => {
-    setSelectedIds((prev) => { const n = new Set(prev); n.delete(drillId); return n; });
-    deleteDrill(sessionId, drillId);
+    Alert.alert('Delete drill?', 'This drill will be removed from the session.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          setSelectedIds((prev) => { const n = new Set(prev); n.delete(drillId); return n; });
+          deleteDrill(sessionId, drillId);
+        },
+      },
+    ]);
   };
 
   const handleDeleteSession = () => {

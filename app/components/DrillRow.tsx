@@ -65,25 +65,23 @@ export function DrillRow({ drill, selected, onToggle, onEdit, onDelete }: DrillR
         <Text style={styles.time}>{csToTime(drill.timeCs)}</Text>
       </Pressable>
 
-      {/* action buttons */}
+      {/* action buttons — tinted zones with clear separation; full-row tap targets */}
       <View style={styles.actions}>
         <Pressable
           testID="drill-edit-btn"
           onPress={onEdit}
           accessibilityLabel="Edit drill"
-          style={({ pressed }) => [styles.actionBtn, pressed && styles.actionPressed]}
-          hitSlop={4}
+          style={({ pressed }) => [styles.actionBtn, styles.actionEdit, pressed && styles.actionEditPressed]}
         >
-          <Ionicons name="pencil" size={18} color="#0ea5e9" />
+          <Ionicons name="pencil" size={22} color="#0ea5e9" />
         </Pressable>
         <Pressable
           testID="drill-delete-btn"
           onPress={onDelete}
           accessibilityLabel="Delete drill"
-          style={({ pressed }) => [styles.actionBtn, pressed && styles.actionPressed]}
-          hitSlop={4}
+          style={({ pressed }) => [styles.actionBtn, styles.actionDelete, pressed && styles.actionDeletePressed]}
         >
-          <Ionicons name="trash-outline" size={18} color="#dc2626" />
+          <Ionicons name="trash-outline" size={22} color="#dc2626" />
         </Pressable>
       </View>
     </View>
@@ -131,7 +129,14 @@ const styles = StyleSheet.create({
   title: { fontSize: 14, fontWeight: '600', color: '#0f172a' },
   labelText: { fontSize: 11, color: '#64748b', marginTop: 1 },
   time: { fontSize: 16, fontWeight: '700', color: '#0f172a', flexShrink: 0, marginRight: 4 },
-  actions: { flexDirection: 'column', borderLeftWidth: 1, borderLeftColor: '#f1f5f9' },
-  actionBtn: { flex: 1, width: 40, alignItems: 'center', justifyContent: 'center' },
-  actionPressed: { backgroundColor: '#f1f5f9' },
+  // Side-by-side, tinted action buttons. Side-by-side (not stacked) makes
+  // each tap target ~48pt wide instead of ~40pt-wide-but-half-height, which
+  // is the iOS HIG minimum and far safer for thumbs. Distinct tints separate
+  // the two zones so the destructive Delete is visually distinct from Edit.
+  actions: { flexDirection: 'row', borderLeftWidth: 1, borderLeftColor: '#e2e8f0' },
+  actionBtn: { width: 48, alignItems: 'center', justifyContent: 'center' },
+  actionEdit: { backgroundColor: '#f0f9ff' },
+  actionEditPressed: { backgroundColor: '#bae6fd' },
+  actionDelete: { backgroundColor: '#fef2f2', borderLeftWidth: 1, borderLeftColor: '#e2e8f0' },
+  actionDeletePressed: { backgroundColor: '#fecaca' },
 });
