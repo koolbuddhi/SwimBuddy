@@ -94,12 +94,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const deleteDrill = async (sessionId: string, drillId: string): Promise<void> => {
     await updateSession(sessionId, (s) => {
       const drills = s.drills.filter((d) => d.id !== drillId);
-      // Remove the deleted drill from every group; drop a group only when it
-      // becomes completely empty (so partial groups survive for the user to
-      // refill — they can still tap "Ungroup" to dissolve it manually).
+      // Auto-delete a group once it would have < 2 drills. The lone remaining
+      // drill is implicitly ungrouped (it stays in s.drills; only the group
+      // entry is dropped). A group of 1 isn't a meaningful "sum group".
       const groups = s.groups
         .map((g) => ({ ...g, drillIds: g.drillIds.filter((id) => id !== drillId) }))
-        .filter((g) => g.drillIds.length > 0);
+        .filter((g) => g.drillIds.length >= 2);
       return { ...s, drills, groups };
     });
   };
