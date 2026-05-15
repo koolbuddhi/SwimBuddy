@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, fireEvent, screen, act } from '@testing-library/react-native';
-import { Alert } from 'react-native';
 import { SessionScreen } from '../../components/SessionScreen';
 import type { Session } from '../../lib/types';
 
@@ -68,30 +67,24 @@ describe('SessionScreen', () => {
     expect(screen.getByTestId('session-empty-state')).toBeTruthy();
   });
 
-  it('shows Alert and calls deleteDrill when the destructive button is pressed', async () => {
+  it('opens ConfirmDialog and calls deleteDrill when the destructive button is pressed', async () => {
     const session = makeSession();
     const { deleteDrill } = mockContext(session);
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation((_title, _msg, buttons) => {
-      buttons?.find((b) => b.style === 'destructive')?.onPress?.();
-    });
     render(<SessionScreen sessionId="s1" onBack={jest.fn()} />);
-    const deleteBtns = screen.getAllByTestId('drill-delete-btn');
-    await act(async () => { fireEvent.press(deleteBtns[0]); });
-    expect(alertSpy).toHaveBeenCalled();
+    await act(async () => { fireEvent.press(screen.getAllByTestId('drill-delete-btn')[0]); });
+    // Dialog should be visible
+    expect(screen.getByText('Delete drill?')).toBeTruthy();
+    await act(async () => { fireEvent.press(screen.getByTestId('confirm-ok-btn')); });
     expect(deleteDrill).toHaveBeenCalledWith('s1', 'd1');
-    alertSpy.mockRestore();
   });
 
   it('cancels delete without calling deleteDrill when Cancel is pressed', async () => {
     const session = makeSession();
     const { deleteDrill } = mockContext(session);
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation((_title, _msg, buttons) => {
-      buttons?.find((b) => b.style === 'cancel')?.onPress?.();
-    });
     render(<SessionScreen sessionId="s1" onBack={jest.fn()} />);
     await act(async () => { fireEvent.press(screen.getAllByTestId('drill-delete-btn')[0]); });
+    await act(async () => { fireEvent.press(screen.getByTestId('confirm-cancel-btn')); });
     expect(deleteDrill).not.toHaveBeenCalled();
-    alertSpy.mockRestore();
   });
 
   it('add FAB exists', () => {
@@ -106,21 +99,16 @@ describe('SessionScreen', () => {
     expect(screen.getByTestId('session-delete-btn')).toBeTruthy();
   });
 
-  it('shows Alert and calls deleteSession on confirm', async () => {
+  it('opens ConfirmDialog and calls deleteSession on confirm', async () => {
     const session = makeSession();
     const { deleteSession } = mockContext(session);
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation((_title, _msg, buttons) => {
-      // simulate pressing the destructive "Delete" button
-      const confirmBtn = buttons?.find((b) => b.style === 'destructive');
-      confirmBtn?.onPress?.();
-    });
     const onBack = jest.fn();
     render(<SessionScreen sessionId="s1" onBack={onBack} />);
     await act(async () => { fireEvent.press(screen.getByTestId('session-delete-btn')); });
-    expect(alertSpy).toHaveBeenCalled();
+    expect(screen.getByText('Delete session?')).toBeTruthy();
+    await act(async () => { fireEvent.press(screen.getByTestId('confirm-ok-btn')); });
     expect(deleteSession).toHaveBeenCalledWith('s1');
     expect(onBack).toHaveBeenCalled();
-    alertSpy.mockRestore();
   });
 
   // ── Group wiring (T14) ────────────────────────────────────────────────────────

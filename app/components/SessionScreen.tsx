@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { ConfirmDialog } from './ConfirmDialog';
 import { DrillRow } from './DrillRow';
 import { DrillSheet } from './DrillSheet';
 import { GroupContainer } from './GroupContainer';
@@ -9,8 +10,13 @@ import { relativeDate } from '../lib/time';
 import { useSession } from '../lib/SessionContext';
 import { sessionToExcel } from '../lib/export/excel';
 import { shareBinary } from '../lib/export/share';
-import { confirmDestructive } from '../lib/confirm';
 import type { Drill } from '../lib/types';
+
+interface ConfirmState {
+  title: string;
+  message: string;
+  onConfirm: () => void | Promise<void>;
+}
 
 interface SessionScreenProps {
   sessionId: string;
@@ -29,6 +35,7 @@ export function SessionScreen({ sessionId, onBack }: SessionScreenProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [dateEditOpen, setDateEditOpen] = useState(false);
   const [dateInput, setDateInput] = useState('');
+  const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
 
   if (!session) return null;
 
@@ -66,16 +73,24 @@ export function SessionScreen({ sessionId, onBack }: SessionScreenProps) {
   };
 
   const handleDeleteDrill = (drillId: string) => {
-    confirmDestructive('Delete drill?', 'This drill will be removed from the session.', () => {
-      setSelectedIds((prev) => { const n = new Set(prev); n.delete(drillId); return n; });
-      deleteDrill(sessionId, drillId);
+    setConfirmState({
+      title: 'Delete drill?',
+      message: 'This drill will be removed from the session.',
+      onConfirm: () => {
+        setSelectedIds((prev) => { const n = new Set(prev); n.delete(drillId); return n; });
+        deleteDrill(sessionId, drillId);
+      },
     });
   };
 
   const handleDeleteSession = () => {
-    confirmDestructive('Delete session', 'This cannot be undone.', async () => {
-      await deleteSession(sessionId);
-      onBack();
+    setConfirmState({
+      title: 'Delete session?',
+      message: 'All drills and groups in this session will be removed. This cannot be undone.',
+      onConfirm: async () => {
+        await deleteSession(sessionId);
+        onBack();
+      },
     });
   };
 
@@ -233,6 +248,19 @@ export function SessionScreen({ sessionId, onBack }: SessionScreenProps) {
           </View>
         </View>
       </Modal>
+
+      {/* Destructive-action confirmation (drill delete + session delete) */}
+      <ConfirmDialog
+        open={confirmState !== null}
+        title={confirmState?.title ?? ''}
+        message={confirmState?.message}
+        onCancel={() => setConfirmState(null)}
+        onConfirm={async () => {
+          const cb = confirmState?.onConfirm;
+          setConfirmState(null);
+          if (cb) await cb();
+        }}
+      />
     </View>
   );
 }
