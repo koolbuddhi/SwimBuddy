@@ -112,3 +112,44 @@ describe('POST /auth/logout', () => {
     expect(setCookie).toMatch(/sb_session/);
   });
 });
+
+describe('POST /auth/test-signin (E2E backdoor)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockPrepare.mockReturnValue({ bind: mockBind });
+    mockBind.mockReturnValue({ run: mockRun });
+    mockRun.mockResolvedValue({});
+  });
+
+  it('returns 404 when ALLOW_TEST_SIGNIN is unset (production safety)', async () => {
+    const res = await app.request('/auth/test-signin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    }, { ...mockEnv });
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 404 when ALLOW_TEST_SIGNIN is set but not exactly "true"', async () => {
+    const res = await app.request('/auth/test-signin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    }, { ...mockEnv, ALLOW_TEST_SIGNIN: '1' });
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 200, sets cookie, and upserts user when ALLOW_TEST_SIGNIN=true', async () => {
+    const res = await app.request('/auth/test-signin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: 'e2e-1', email: 'e2e@test', name: 'E2E' }),
+    }, { ...mockEnv, ALLOW_TEST_SIGNIN: 'true' });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { id: string; email: string };
+    expect(body.id).toBe('e2e-1');
+    expect(body.email).toBe('e2e@test');
+    expect(res.headers.get('set-cookie')).toMatch(/sb_session/);
+    expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO users'));
+  });
+});

@@ -1,0 +1,16 @@
+{
+  "name": "swimbuddy-e2e",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "test": "playwright test --project=local",
+    "test:prod": "playwright test --project=prod-smoke",
+    "test:all": "playwright test",
+    "trace": "playwright show-trace",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^22.7.5"
+  }
+}

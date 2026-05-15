@@ -4,11 +4,14 @@
   "private": true,
   "workspaces": [
     "app",
-    "api"
+    "api",
+    "e2e"
   ],
   "scripts": {
     "typecheck": "npm run typecheck --workspace=app",
     "lint": "npm run lint --workspace=app",
-    "test": "npm test --workspace=app"
+    "test": "npm test --workspace=app",
+    "test:e2e": "npm test --workspace=e2e",
+    "test:e2e:prod": "npm run test:prod --workspace=e2e"
   }
 }

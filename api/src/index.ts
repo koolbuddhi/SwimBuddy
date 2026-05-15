@@ -8,6 +8,10 @@ export type Env = {
   DB: D1Database;
   GOOGLE_CLIENT_ID: string;
   ALLOWED_ORIGINS?: string;
+  // Gates POST /auth/test-signin. Set to 'true' in CI / local dev only.
+  // Production must leave this unset (or any non-'true' value) — the route
+  // returns 404 in that case so the backdoor is unreachable.
+  ALLOW_TEST_SIGNIN?: string;
 };
 
 const app = new Hono<{ Bindings: Env }>();

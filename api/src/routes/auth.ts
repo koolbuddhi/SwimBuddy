@@ -62,3 +62,36 @@ authRouter.post('/logout', (c) => {
   deleteCookie(c, COOKIE_NAME, { path: '/' });
   return c.json({ ok: true });
 });
+
+// ── E2E backdoor ──────────────────────────────────────────────────────────────
+// Lets the Playwright suite sign in without going through real Google OAuth.
+// Gated by the ALLOW_TEST_SIGNIN env var; production must leave it unset.
+authRouter.post('/test-signin', async (c) => {
+  if (c.env.ALLOW_TEST_SIGNIN !== 'true') {
+    return c.json({ error: 'Not found' }, 404);
+  }
+  const body = await c.req.json<{ id?: string; email?: string; name?: string }>();
+  const id = body?.id ?? 'e2e-user-1';
+  const email = body?.email ?? 'e2e@swimbuddy.test';
+  const name = body?.name ?? 'E2E User';
+
+  const now = new Date().toISOString();
+  await c.env.DB.prepare(
+    `INSERT INTO users (id, email, name, created_at, last_seen_at)
+     VALUES (?1, ?2, ?3, ?4, ?4)
+     ON CONFLICT (id) DO UPDATE SET email = ?2, name = ?3, last_seen_at = ?4`,
+  )
+    .bind(id, email, name, now)
+    .run();
+
+  const isHttps = new URL(c.req.url).protocol === 'https:';
+  setCookie(c, COOKIE_NAME, id, {
+    httpOnly: true,
+    secure: isHttps,
+    sameSite: isHttps ? 'None' : 'Lax',
+    maxAge: COOKIE_MAX_AGE,
+    path: '/',
+  });
+
+  return c.json({ id, email, name });
+});
