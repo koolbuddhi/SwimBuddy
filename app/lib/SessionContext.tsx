@@ -1,12 +1,19 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import { localDB } from './localDB';
 import { todayISO } from './time';
+import { SyncClient } from './sync/client';
+import { useAuth } from './auth';
 import type { Drill, Session } from './types';
+
+const API_BASE = process.env.EXPO_PUBLIC_API_BASE ?? 'http://localhost:8787';
 
 interface SessionContextValue {
   sessions: Session[];
   loading: boolean;
   pendingCount: number;
+  syncing: boolean;
+  sync(): Promise<void>;
   createSession(): Promise<Session>;
   updateSession(id: string, updater: (s: Session) => Session): Promise<void>;
   deleteSession(id: string): Promise<void>;
@@ -21,21 +28,85 @@ interface SessionContextValue {
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [syncing, setSyncing] = useState(false);
 
+  const syncClient = useMemo(() => new SyncClient(API_BASE), []);
+  const syncInFlight = useRef(false);
+  const syncScheduled = useRef(false);
+
+  // Flush local writes → pull server state → refresh React state.
+  // If called while a sync is already in flight, schedules a follow-up run
+  // so writes queued during the current flush don't get stranded.
+  const sync = useCallback(async () => {
+    if (!user) return;
+    if (syncInFlight.current) {
+      syncScheduled.current = true;
+      return;
+    }
+    syncInFlight.current = true;
+    setSyncing(true);
+    try {
+      await syncClient.flush();
+      await syncClient.pull();
+      const merged = await localDB.getSessions();
+      setSessions(merged);
+      const queue = await localDB.getPendingMutations();
+      setPendingCount(queue.length);
+    } catch {
+      // Offline or transient failure — local data is still valid.
+    } finally {
+      syncInFlight.current = false;
+      setSyncing(false);
+      if (syncScheduled.current) {
+        syncScheduled.current = false;
+        // Recurse to drain any mutations queued during this run.
+        sync();
+      }
+    }
+  }, [syncClient, user]);
+
+  // Initial load: show local immediately, then sync if signed in.
   useEffect(() => {
-    localDB.getSessions().then((all) => {
+    let cancelled = false;
+    localDB.getSessions().then(async (all) => {
+      if (cancelled) return;
       setSessions(all);
       setLoading(false);
+      const queue = await localDB.getPendingMutations();
+      if (cancelled) return;
+      setPendingCount(queue.length);
     });
+    return () => { cancelled = true; };
   }, []);
 
-  const [pendingCount, setPendingCount] = useState(0);
+  // When user signs in (or changes), do a full sync.
+  useEffect(() => {
+    if (!user) return;
+    sync();
+  }, [user?.id, sync]);
+
+  // Re-sync when the tab regains focus or the network comes back online.
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const onFocus = () => { if (document.visibilityState === 'visible') sync(); };
+    const onOnline = () => sync();
+    window.addEventListener('visibilitychange', onFocus);
+    window.addEventListener('online', onOnline);
+    return () => {
+      window.removeEventListener('visibilitychange', onFocus);
+      window.removeEventListener('online', onOnline);
+    };
+  }, [sync]);
 
   const queueOp = (op: Parameters<typeof localDB.queueMutation>[0]) => {
     localDB.queueMutation(op);
     setPendingCount((n) => n + 1);
+    // Fire-and-forget background sync; reflects writes to other devices.
+    if (user) sync();
   };
 
   const createSession = async (): Promise<Session> => {
@@ -136,7 +207,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   return (
     <SessionContext.Provider
       value={{
-        sessions, loading, pendingCount, createSession, updateSession, deleteSession,
+        sessions, loading, pendingCount, syncing, sync,
+        createSession, updateSession, deleteSession,
         addDrill, updateDrill, deleteDrill,
         saveGroup, ungroupGroup, removeGroup,
       }}

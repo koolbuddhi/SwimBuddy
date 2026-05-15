@@ -26,6 +26,21 @@ jest.mock('../../lib/localDB', () => ({
   },
 }));
 
+// Stub useAuth — SessionContext now depends on it for sign-in-triggered
+// sync. The tests don't exercise auth, so we return a null user.
+jest.mock('../../lib/auth', () => ({
+  useAuth: () => ({ user: null, loading: false, signIn: jest.fn(), signOut: jest.fn() }),
+  AuthProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
+// Stub SyncClient — context tests focus on local state, not network sync.
+jest.mock('../../lib/sync/client', () => ({
+  SyncClient: class {
+    flush = jest.fn().mockResolvedValue(undefined);
+    pull = jest.fn().mockResolvedValue(undefined);
+  },
+}));
+
 // Retrieve the mock object after the factory has run
 const { localDB: mockDB } = jest.requireMock('../../lib/localDB') as {
   localDB: {
@@ -62,6 +77,7 @@ beforeEach(() => {
   mockDB.putSession.mockResolvedValue(undefined);
   mockDB.deleteSession.mockResolvedValue(undefined);
   mockDB.queueMutation.mockResolvedValue(undefined);
+  mockDB.getPendingMutations.mockResolvedValue([]);
 });
 
 // ── tests ─────────────────────────────────────────────────────────────────────

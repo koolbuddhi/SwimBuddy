@@ -9,7 +9,7 @@ import { shareCSV, shareBinary } from '../lib/export/share';
 
 export function SettingsScreen() {
   const { user, signOut } = useAuth();
-  const { sessions } = useSession();
+  const { sessions, sync, syncing, pendingCount } = useSession();
 
   const handleSignOut = async () => {
     await signOut();
@@ -68,6 +68,26 @@ export function SettingsScreen() {
         </Pressable>
       </View>
 
+      {/* Sync section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Sync</Text>
+        <View style={styles.row}>
+          <Text style={styles.sublabel}>
+            {pendingCount > 0
+              ? `${pendingCount} change${pendingCount === 1 ? '' : 's'} waiting to upload`
+              : 'All changes synced'}
+          </Text>
+        </View>
+        <Pressable
+          testID="settings-sync-btn"
+          style={[styles.btn, syncing && styles.btnDisabled]}
+          onPress={sync}
+          disabled={syncing}
+        >
+          <Text style={styles.btnText}>{syncing ? 'Syncing…' : 'Sync now'}</Text>
+        </Pressable>
+      </View>
+
       {/* Export section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Export</Text>
@@ -100,5 +120,6 @@ const styles = StyleSheet.create({
   label: { fontSize: 15, fontWeight: '600', color: '#0f172a' },
   sublabel: { fontSize: 13, color: '#64748b' },
   btn: { backgroundColor: '#f1f5f9', borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
+  btnDisabled: { opacity: 0.5 },
   btnText: { fontSize: 14, fontWeight: '600', color: '#0f172a' },
 });
