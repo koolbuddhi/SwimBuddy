@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { formatTimeInput, digToCs, csToDig } from '../lib/time';
 import type { Drill, StrokeId } from '../lib/types';
+import { StopwatchWidget } from './StopwatchWidget';
 
 // ── constants ─────────────────────────────────────────────────────────────────
 
@@ -189,6 +190,8 @@ export function DrillSheet({ drill, onClose, onSave }: DrillSheetProps) {
             inputMode="numeric"
           />
           <Text style={styles.hint}>Type digits — e.g. 3045 → 00:30.45</Text>
+
+          <StopwatchWidget onUse={(cs) => setTimeDigits(csToDig(cs))} />
 
           {/* label */}
           <Text style={[styles.label, { marginTop: 18 }]}>Label (optional)</Text>
