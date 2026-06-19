@@ -23,6 +23,7 @@ export function SwimmerSwitcher() {
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
+      style={styles.scroll}
       contentContainerStyle={styles.row}
       testID="swimmer-switcher"
     >
@@ -73,8 +74,16 @@ function Chip({ label, active, onPress, testID, sub }: {
 }
 
 const styles = StyleSheet.create({
-  row: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4, gap: 8, flexDirection: 'row' },
+  // flexGrow:0 keeps the horizontal ScrollView from filling the parent's
+  // vertical space (React Native Web defaults rows to align-items:stretch,
+  // which made the chips render as tall pills inside the Home flex column).
+  scroll: { flexGrow: 0, flexShrink: 0 },
+  row: {
+    paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4,
+    gap: 8, flexDirection: 'row', alignItems: 'center',
+  },
   chip: {
+    alignSelf: 'flex-start',  // don't let row stretch the chip vertically
     paddingHorizontal: 14, paddingVertical: 8,
     borderRadius: 18, backgroundColor: '#fff',
     borderWidth: 1, borderColor: '#cbd5e1',
