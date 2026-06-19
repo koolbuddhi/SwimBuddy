@@ -27,6 +27,7 @@ app/ios/
 # Cloudflare
 api/.wrangler/
 api/dist/
+api/.local-snapshots/
 
 # test coverage
 coverage/
