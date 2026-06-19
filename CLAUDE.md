@@ -135,6 +135,13 @@ Server-side conflict resolution is last-writer-wins per session (D1
    for YYYY-MM-DD in device-local time, not UTC. Don't switch to
    `toISOString().slice(0, 10)` — it'll roll over a day for users east
    of UTC.
+7. **Share permission model**: ownership of a session is immutable —
+   it stays with the original creator even if a write-share collaborator
+   edits it. Sync uses per-drill merge on the server so that two devices
+   adding different drills offline both survive; same-drill edits remain
+   last-write-wins. `selectedOwnerId` in `SessionContext` filters the
+   visible list — read-only views hide the FAB / edit / delete via the
+   `useViewingPermission()` hook.
 
 ## Boundaries
 
