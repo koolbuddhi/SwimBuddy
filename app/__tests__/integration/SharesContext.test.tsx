@@ -79,6 +79,49 @@ describe('SharesContext', () => {
     expect(result.current.error).not.toContain('401');
   });
 
+  it('accept does not throw on 409 conflict — treats it as benign', async () => {
+    mockUseAuth.mockReturnValue({ user: { id: 'me' } });
+    mockListResult.mockResolvedValue({ outgoing: [], incoming: [] });
+    mockAccept.mockRejectedValueOnce(new ShareError('conflict', 'Already done'));
+    const { result } = renderHook(() => useShares(), { wrapper });
+    await act(async () => {});
+
+    await act(async () => {
+      await result.current.accept('sh-1');
+    });
+
+    // No error surfaced, refresh fired.
+    expect(result.current.error).toBeNull();
+    expect(mockListResult).toHaveBeenCalledTimes(2);
+  });
+
+  it('accept maps a 404 to a friendly "share no longer exists" message', async () => {
+    mockUseAuth.mockReturnValue({ user: { id: 'me' } });
+    mockListResult.mockResolvedValue({ outgoing: [], incoming: [] });
+    mockAccept.mockRejectedValueOnce(new ShareError('not_found', 'gone'));
+    const { result } = renderHook(() => useShares(), { wrapper });
+    await act(async () => {});
+
+    await act(async () => {
+      await result.current.accept('sh-missing');
+    });
+
+    expect(result.current.error).toMatch(/no longer exists/i);
+  });
+
+  it('accept never re-throws — onPress handlers never see an uncaught error', async () => {
+    mockUseAuth.mockReturnValue({ user: { id: 'me' } });
+    mockListResult.mockResolvedValue({ outgoing: [], incoming: [] });
+    mockAccept.mockRejectedValueOnce(new ShareError('http', 'Network error (500)'));
+    const { result } = renderHook(() => useShares(), { wrapper });
+    await act(async () => {});
+
+    // Should resolve, NOT reject.
+    await act(async () => {
+      await expect(result.current.accept('sh-1')).resolves.toBeUndefined();
+    });
+  });
+
   it('clears error when the user signs out', async () => {
     mockUseAuth.mockReturnValue({ user: { id: 'me' } });
     mockListResult.mockRejectedValueOnce(new ShareError('unauthenticated', 'Sign in required'));

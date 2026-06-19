@@ -70,8 +70,34 @@ export function SharesProvider({ children }: { children: React.ReactNode }) {
     return created;
   }, [client, refresh]);
 
+  // Translate the typed ShareError codes into either a user-message + refresh
+  // (recoverable) or a no-op + refresh (benign — already in the desired state).
+  // Never re-throws — keeps the onPress handlers in the UI free of try/catch.
+  const handleActionError = useCallback(async (e: unknown) => {
+    await refresh();
+    if (!(e instanceof ShareError)) {
+      setError(e instanceof Error ? e.message : String(e));
+      return;
+    }
+    switch (e.code) {
+      case 'conflict':
+        // Already in that state — race or stale optimistic click. Silent.
+        return;
+      case 'not_found':
+        setError('That share no longer exists.');
+        return;
+      case 'unauthenticated':
+        setError('Please sign in again.');
+        return;
+      case 'forbidden':
+        setError('You are not allowed to do that.');
+        return;
+      default:
+        setError(e.message);
+    }
+  }, [refresh]);
+
   const accept = useCallback(async (id: string) => {
-    // Optimistic flip
     setIncoming((prev) =>
       prev.map((s) => (s.id === id ? { ...s, status: 'accepted', acceptedAt: new Date().toISOString() } : s)),
     );
@@ -79,10 +105,9 @@ export function SharesProvider({ children }: { children: React.ReactNode }) {
       await client.accept(id);
       refresh();
     } catch (e) {
-      await refresh();  // revert via re-fetch
-      throw e;
+      await handleActionError(e);
     }
-  }, [client, refresh]);
+  }, [client, refresh, handleActionError]);
 
   const decline = useCallback(async (id: string) => {
     setIncoming((prev) =>
@@ -92,13 +117,11 @@ export function SharesProvider({ children }: { children: React.ReactNode }) {
       await client.decline(id);
       refresh();
     } catch (e) {
-      await refresh();
-      throw e;
+      await handleActionError(e);
     }
-  }, [client, refresh]);
+  }, [client, refresh, handleActionError]);
 
   const revoke = useCallback(async (id: string) => {
-    // Locally mark as revoked in either list optimistically
     const stamp = (s: Share): Share => ({ ...s, status: 'revoked', revokedAt: new Date().toISOString() });
     setOutgoing((prev) => prev.map((s) => (s.id === id ? stamp(s) : s)));
     setIncoming((prev) => prev.map((s) => (s.id === id ? stamp(s) : s)));
@@ -106,10 +129,9 @@ export function SharesProvider({ children }: { children: React.ReactNode }) {
       await client.revoke(id);
       refresh();
     } catch (e) {
-      await refresh();
-      throw e;
+      await handleActionError(e);
     }
-  }, [client, refresh]);
+  }, [client, refresh, handleActionError]);
 
   const acceptedIncoming = useMemo(
     () => incoming.filter((s) => s.status === 'accepted'),
