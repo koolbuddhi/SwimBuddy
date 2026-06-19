@@ -24,6 +24,13 @@ export interface Session {
   groups: Group[];
   createdAt: string;
   updatedAt: string;
+  // ── Share-aware fields (added in feat/share-sessions) ─────────────────────
+  // ownerId is the user who created the session. Always present after the
+  // share feature ships; older local rows fall back to currentUser.id on read.
+  ownerId?: string;
+  // Last non-owner editor; null when the owner made the most recent edit.
+  lastEditedByUserId?: string | null;
+  lastEditedAt?: string | null;
 }
 
 // ── Mutation queue ────────────────────────────────────────────────────────────
@@ -77,4 +84,29 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string;
+}
+
+// ── Sharing ───────────────────────────────────────────────────────────────────
+
+export type SharePermission = 'read' | 'write';
+export type ShareStatus = 'pending' | 'accepted' | 'declined' | 'revoked';
+
+export interface Share {
+  id: string;
+  ownerUserId: string;
+  recipientUserId: string;
+  ownerEmail?: string;
+  ownerName?: string | null;
+  recipientEmail?: string;
+  recipientName?: string | null;
+  permission: SharePermission;
+  status: ShareStatus;
+  createdAt: string;
+  acceptedAt: string | null;
+  revokedAt: string | null;
+}
+
+export interface SharesSnapshot {
+  outgoing: Share[];
+  incoming: Share[];
 }

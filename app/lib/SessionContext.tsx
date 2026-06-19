@@ -9,10 +9,16 @@ import type { Drill, Session } from './types';
 const API_BASE = process.env.EXPO_PUBLIC_API_BASE ?? 'http://localhost:8787';
 
 interface SessionContextValue {
+  /** Sessions visible to the currently-selected swimmer (filtered by ownerId).
+   *  When no shares are active, this is identical to the user's own sessions. */
   sessions: Session[];
   loading: boolean;
   pendingCount: number;
   syncing: boolean;
+  /** The owner whose sessions are currently visible. Defaults to the signed-in
+   *  user. Changed via setSelectedOwnerId (e.g. from the swimmer-switcher). */
+  selectedOwnerId: string | null;
+  setSelectedOwnerId(ownerId: string): void;
   sync(): Promise<void>;
   createSession(): Promise<Session>;
   updateSession(id: string, updater: (s: Session) => Session): Promise<void>;
@@ -29,10 +35,35 @@ const SessionContext = createContext<SessionContextValue | null>(null);
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const [sessions, setSessions] = useState<Session[]>([]);
+  const [allSessions, setAllSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
+  const [selectedOwnerId, setSelectedOwnerIdState] = useState<string | null>(null);
+
+  // Default the selected owner to the current user when they sign in, unless
+  // the user has explicitly switched (then we leave their choice alone — they
+  // can switch back via the swimmer switcher).
+  useEffect(() => {
+    if (user?.id && !selectedOwnerId) setSelectedOwnerIdState(user.id);
+  }, [user?.id, selectedOwnerId]);
+
+  // Backfill: a session created before this feature won't carry ownerId.
+  // Treat it as owned by whoever is currently signed in — that's true for
+  // every existing row in the legacy single-user world.
+  const ownerIdOf = useCallback(
+    (s: Session): string => s.ownerId ?? user?.id ?? '',
+    [user?.id],
+  );
+
+  const sessions = useMemo(() => {
+    if (!selectedOwnerId) return allSessions;
+    return allSessions.filter((s) => ownerIdOf(s) === selectedOwnerId);
+  }, [allSessions, selectedOwnerId, ownerIdOf]);
+
+  const setSelectedOwnerId = useCallback((ownerId: string) => {
+    setSelectedOwnerIdState(ownerId);
+  }, []);
 
   const syncClient = useMemo(() => new SyncClient(API_BASE), []);
   const syncInFlight = useRef(false);
@@ -53,7 +84,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       await syncClient.flush();
       await syncClient.pull();
       const merged = await localDB.getSessions();
-      setSessions(merged);
+      setAllSessions(merged);
       const queue = await localDB.getPendingMutations();
       setPendingCount(queue.length);
     } catch {
@@ -74,7 +105,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     localDB.getSessions().then(async (all) => {
       if (cancelled) return;
-      setSessions(all);
+      setAllSessions(all);
       setLoading(false);
       const queue = await localDB.getPendingMutations();
       if (cancelled) return;
@@ -144,9 +175,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       groups: [],
       createdAt: now,
       updatedAt: now,
+      ownerId: user?.id,
     };
     await localDB.putSession(session);
-    setSessions((prev) => [session, ...prev]);
+    setAllSessions((prev) => [session, ...prev]);
     queueOp({ op: 'upsert_session', session, clientVersion: 1 });
     return session;
   };
@@ -155,7 +187,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     id: string,
     updater: (s: Session) => Session,
   ): Promise<void> => {
-    setSessions((prev) => {
+    setAllSessions((prev) => {
       const next = prev.map((s) => (s.id === id ? updater(s) : s));
       const updated = next.find((s) => s.id === id);
       if (updated) {
@@ -169,7 +201,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const deleteSession = async (id: string): Promise<void> => {
     await localDB.deleteSession(id);
-    setSessions((prev) => prev.filter((s) => s.id !== id));
+    setAllSessions((prev) => prev.filter((s) => s.id !== id));
     queueOp({ op: 'delete_session', sessionId: id });
   };
 
@@ -232,7 +264,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   return (
     <SessionContext.Provider
       value={{
-        sessions, loading, pendingCount, syncing, sync,
+        sessions, loading, pendingCount, syncing,
+        selectedOwnerId, setSelectedOwnerId,
+        sync,
         createSession, updateSession, deleteSession,
         addDrill, updateDrill, deleteDrill,
         saveGroup, ungroupGroup, removeGroup,

@@ -249,4 +249,44 @@ describe('SessionContext', () => {
     expect(s.groups).toHaveLength(0);
     expect(s.drills.map((d) => d.id)).toEqual(['d2']);
   });
+
+  describe('selectedOwnerId / multi-owner filtering', () => {
+    // Tests rely on AuthProvider stub returning user=null. With no user signed
+    // in, selectedOwnerId stays null until set, so the full set is visible.
+
+    it('exposes selectedOwnerId on the context, initially null with no user', async () => {
+      const { result } = renderHook(() => useSession(), { wrapper });
+      await act(async () => {});
+      expect(result.current.selectedOwnerId).toBeNull();
+    });
+
+    it('filters sessions to the selectedOwnerId once set', async () => {
+      mockDB.getSessions.mockResolvedValue([
+        { ...makeSession('s1'), ownerId: 'user-a' },
+        { ...makeSession('s2'), ownerId: 'user-b' },
+        { ...makeSession('s3'), ownerId: 'user-a' },
+      ]);
+      const { result } = renderHook(() => useSession(), { wrapper });
+      await act(async () => {});
+      expect(result.current.sessions).toHaveLength(3);
+
+      await act(async () => {
+        result.current.setSelectedOwnerId('user-a');
+      });
+      expect(result.current.sessions.map((s) => s.id)).toEqual(['s1', 's3']);
+
+      await act(async () => {
+        result.current.setSelectedOwnerId('user-b');
+      });
+      expect(result.current.sessions.map((s) => s.id)).toEqual(['s2']);
+    });
+
+    it('legacy sessions without ownerId are not orphaned when no user is signed in', async () => {
+      // With user=null and selectedOwnerId=null, no filter is applied.
+      mockDB.getSessions.mockResolvedValue([makeSession('legacy-1')]);
+      const { result } = renderHook(() => useSession(), { wrapper });
+      await act(async () => {});
+      expect(result.current.sessions).toHaveLength(1);
+    });
+  });
 });
