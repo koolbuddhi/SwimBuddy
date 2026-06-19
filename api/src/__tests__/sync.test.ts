@@ -11,11 +11,13 @@ const mockPrepare = jest.fn();
 const mockBind = jest.fn();
 const mockRun = jest.fn();
 const mockAll = jest.fn();
+const mockFirst = jest.fn();
 
 mockPrepare.mockReturnValue({ bind: mockBind });
-mockBind.mockReturnValue({ run: mockRun, all: mockAll });
+mockBind.mockReturnValue({ run: mockRun, all: mockAll, first: mockFirst });
 mockRun.mockResolvedValue({});
 mockAll.mockResolvedValue({ results: [] });
+mockFirst.mockResolvedValue(null);
 
 const mockEnv = {
   DB: { prepare: mockPrepare } as unknown as D1Database,
@@ -38,9 +40,10 @@ const postWithSession = (path: string, body: unknown) =>
 beforeEach(() => {
   jest.clearAllMocks();
   mockPrepare.mockReturnValue({ bind: mockBind });
-  mockBind.mockReturnValue({ run: mockRun, all: mockAll });
+  mockBind.mockReturnValue({ run: mockRun, all: mockAll, first: mockFirst });
   mockRun.mockResolvedValue({});
   mockAll.mockResolvedValue({ results: [] });
+  mockFirst.mockResolvedValue(null);
 });
 
 describe('GET /sync', () => {
@@ -103,5 +106,42 @@ describe('POST /sync', () => {
     expect(res.status).toBe(200);
     const body = await res.json() as { syncedAt: string };
     expect(body.syncedAt).toBeTruthy();
+  });
+
+  it('allows a non-owner write when an accepted write-share exists', async () => {
+    mockFirst
+      .mockResolvedValueOnce({ user_id: 'someone-else' })  // existing session lookup
+      .mockResolvedValueOnce({ id: 'share-1' });           // share lookup
+    const session = {
+      id: 's1', date: '2026-05-13', notes: '', drills: [], groups: [],
+      createdAt: '2026-05-13T10:00:00Z', updatedAt: '2026-05-13T10:00:00Z',
+    };
+    const res = await postWithSession('/sync', {
+      mutations: [{ op: 'upsert_session', session, clientVersion: 1 }],
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { rejected: unknown[] };
+    expect(body.rejected).toEqual([]);
+  });
+
+  it('rejects a non-owner write when no accepted write-share exists', async () => {
+    mockFirst
+      .mockResolvedValueOnce({ user_id: 'someone-else' })  // existing session lookup
+      .mockResolvedValueOnce(null);                         // no share
+    const session = {
+      id: 's1', date: '2026-05-13', notes: '', drills: [], groups: [],
+      createdAt: '2026-05-13T10:00:00Z', updatedAt: '2026-05-13T10:00:00Z',
+    };
+    const res = await postWithSession('/sync', {
+      mutations: [{ op: 'upsert_session', session, clientVersion: 1 }],
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { rejected: Array<{ id: string; reason: string }> };
+    expect(body.rejected).toEqual([{ id: 's1', reason: 'forbidden' }]);
+  });
+
+  it('GET /sync joins shared-with-me sessions via the shares table', async () => {
+    await getWithSession('/sync');
+    expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('FROM shares'));
   });
 });

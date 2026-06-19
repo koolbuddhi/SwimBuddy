@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { authRouter } from './routes/auth';
 import { syncRouter } from './routes/sync';
 import { accountRouter } from './routes/account';
+import { sharesRouter } from './routes/shares';
 
 export type Env = {
   DB: D1Database;
@@ -30,5 +31,6 @@ app.get('/health', (c) => c.json({ ok: true }));
 app.route('/auth', authRouter);
 app.route('/sync', syncRouter);
 app.route('/account', accountRouter);
+app.route('/shares', sharesRouter);
 
 export default app;
