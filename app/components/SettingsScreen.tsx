@@ -54,7 +54,7 @@ export function SettingsScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView style={styles.scrollOuter} contentContainerStyle={styles.container}>
       {/* Account section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Account</Text>
@@ -109,6 +109,9 @@ export function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
+  // Center the scroll content + cap width so desktop browsers don't stretch
+  // settings cards edge-to-edge.
+  scrollOuter: { flex: 1, width: '100%', maxWidth: 720, alignSelf: 'center' },
   container: { padding: 20, gap: 24 },
   section: {
     backgroundColor: '#fff',

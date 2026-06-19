@@ -144,4 +144,63 @@ describe('POST /sync', () => {
     await getWithSession('/sync');
     expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('FROM shares'));
   });
+
+  it('merges drills + groups with the existing server row so concurrent adds both survive', async () => {
+    // Existing row: drills d-old, groups g-old (owned by user-123, the caller)
+    mockFirst
+      .mockResolvedValueOnce({ user_id: 'user-123' })       // ownership lookup
+      .mockResolvedValueOnce({                              // data lookup
+        data: JSON.stringify({
+          drills: [{ id: 'd-old', strokeId: 'fly', distance: 25, timeCs: 1000, createdAt: 't1' }],
+          groups: [{ id: 'g-old', name: 'Set', drillIds: ['d-old'] }],
+        }),
+      });
+
+    const session = {
+      id: 's1', date: '2026-05-13', notes: '',
+      drills: [{ id: 'd-new', strokeId: 'back', distance: 50, timeCs: 2000, createdAt: 't2' }],
+      groups: [{ id: 'g-new', name: 'Set 2', drillIds: ['d-new'] }],
+      createdAt: '2026-05-13T10:00:00Z', updatedAt: '2026-05-13T10:00:00Z',
+    };
+    const res = await postWithSession('/sync', {
+      mutations: [{ op: 'upsert_session', session, clientVersion: 2 }],
+    });
+    expect(res.status).toBe(200);
+
+    // The INSERT bind has 10 positional args; the SELECT lookups have only 1.
+    const insertBindCalls = mockBind.mock.calls.filter((args) => args.length === 10);
+    expect(insertBindCalls.length).toBeGreaterThan(0);
+    const dataArg = insertBindCalls[0][4] as string;
+    expect(dataArg).toContain('d-old');
+    expect(dataArg).toContain('d-new');
+    expect(dataArg).toContain('g-old');
+    expect(dataArg).toContain('g-new');
+  });
+
+  it('on same-drill-id collision, the incoming version wins (LWW per drill)', async () => {
+    mockFirst
+      .mockResolvedValueOnce({ user_id: 'user-123' })
+      .mockResolvedValueOnce({
+        data: JSON.stringify({
+          drills: [{ id: 'd-1', strokeId: 'fly', distance: 25, timeCs: 1000, createdAt: 't1' }],
+          groups: [],
+        }),
+      });
+
+    const session = {
+      id: 's1', date: '2026-05-13', notes: '',
+      drills: [{ id: 'd-1', strokeId: 'fly', distance: 25, timeCs: 9999, createdAt: 't1' }],
+      groups: [],
+      createdAt: '2026-05-13T10:00:00Z', updatedAt: '2026-05-13T10:00:00Z',
+    };
+    await postWithSession('/sync', {
+      mutations: [{ op: 'upsert_session', session, clientVersion: 3 }],
+    });
+
+    const insertBindCalls = mockBind.mock.calls.filter((args) => args.length === 10);
+    expect(insertBindCalls.length).toBeGreaterThan(0);
+    const dataArg = insertBindCalls[0][4] as string;
+    expect(dataArg).toContain('9999');     // incoming value
+    expect(dataArg).not.toContain(',1000'); // not the old one (avoid sub-match on "9999")
+  });
 });

@@ -186,6 +186,7 @@ export function SessionScreen({ sessionId, onBack }: SessionScreenProps) {
         </View>
       ) : (
         <ScrollView
+          style={styles.scrollOuter}
           contentContainerStyle={styles.list}
           refreshControl={<RefreshControl refreshing={syncing} onRefresh={sync} tintColor="#0ea5e9" />}
         >
@@ -326,6 +327,9 @@ const styles = StyleSheet.create({
   dateSave: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: '#0ea5e9' },
   dateSaveDisabled: { opacity: 0.4 },
   dateSaveText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  // maxWidth keeps the drill list from stretching edge-to-edge on desktop
+  // browser viewports; alignSelf:center keeps it centered.
+  scrollOuter: { flex: 1, width: '100%', maxWidth: 720, alignSelf: 'center' },
   list: { padding: 16, paddingBottom: 80 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
   emptyText: { fontSize: 17, fontWeight: '700', color: '#0f172a' },

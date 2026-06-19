@@ -97,7 +97,41 @@ syncRouter.post('/', async (c) => {
         }
       }
 
-      const data = JSON.stringify({ drills: s.drills, groups: s.groups });
+      // Per-drill / per-group merge with the existing server-side data so
+      // that two devices editing the same session offline don't clobber
+      // each other's adds. Last-write-wins is preserved for same-id drills
+      // (rare in practice); ids that exist on only one side survive.
+      let mergedDrills = s.drills;
+      let mergedGroups = s.groups;
+      if (existing) {
+        const existingData = await c.env.DB.prepare(
+          `SELECT data FROM sessions WHERE id = ?1`,
+        )
+          .bind(s.id)
+          .first<{ data: string }>();
+        if (existingData?.data) {
+          try {
+            const parsed = JSON.parse(existingData.data) as {
+              drills?: Array<{ id: string }>;
+              groups?: Array<{ id: string }>;
+            };
+            const incomingDrillIds = new Set(s.drills.map((d) => (d as { id: string }).id));
+            const incomingGroupIds = new Set(s.groups.map((g) => (g as { id: string }).id));
+            mergedDrills = [
+              ...s.drills,
+              ...(parsed.drills ?? []).filter((d) => !incomingDrillIds.has(d.id)),
+            ] as typeof s.drills;
+            mergedGroups = [
+              ...s.groups,
+              ...(parsed.groups ?? []).filter((g) => !incomingGroupIds.has(g.id)),
+            ] as typeof s.groups;
+          } catch {
+            // Corrupted JSON in the existing row — fall back to incoming.
+          }
+        }
+      }
+
+      const data = JSON.stringify({ drills: mergedDrills, groups: mergedGroups });
       const lastEditedBy = ownerId === userId ? null : userId;
 
       await c.env.DB.prepare(
