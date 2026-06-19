@@ -1,0 +1,527 @@
+<title>SwimBuddy · Analytics mockup</title>
+<style>
+  :root {
+    --bg:#f1f5f9; --ink:#0f172a; --muted:#64748b; --soft:#94a3b8;
+    --sky:#0ea5e9; --sky-bg:#e0f2fe; --sky-deep:#0369a1;
+    --good:#10b981; --good-bg:#d1fae5;
+    --warn:#f59e0b; --warn-bg:#fef3c7;
+    --pop:#8b5cf6; --pop-bg:#ede9fe;
+    --line:#e2e8f0;
+    --note:#fef9c3; --note-ink:#713f12;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+    background: var(--bg); color: var(--ink);
+    line-height: 1.45;
+  }
+  .wrap { max-width: 1200px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .subtitle { color: var(--muted); margin: 0 0 24px; font-size: 14px; }
+  nav.tabs {
+    display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap;
+  }
+  nav.tabs button {
+    border: 1px solid var(--line); background: #fff;
+    padding: 8px 14px; border-radius: 999px;
+    font-weight: 700; font-size: 13px; color: var(--ink); cursor: pointer;
+  }
+  nav.tabs button.active { background: var(--sky); border-color: var(--sky); color: #fff; }
+  .screen { display: none; }
+  .screen.active { display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: start; }
+  .phone {
+    background: #fff; border-radius: 28px;
+    border: 8px solid #0f172a;
+    width: 320px; height: 640px;
+    overflow: auto;
+    position: sticky; top: 24px;
+  }
+  .phone::-webkit-scrollbar { width: 0; }
+  .device-status {
+    height: 24px; background: #fff;
+    border-bottom: 1px solid var(--line);
+    font-size: 11px; color: var(--muted);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600;
+  }
+  .notes { padding: 8px 0; }
+  .note {
+    background: #fff; border-radius: 12px; border: 1px solid var(--line);
+    padding: 14px 16px; margin-bottom: 12px;
+  }
+  .note h3 {
+    margin: 0 0 6px; font-size: 14px; color: var(--sky-deep);
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .note p { margin: 0 0 6px; font-size: 14px; color: var(--ink); }
+  .note p:last-child { margin: 0; }
+  .pin {
+    display: inline-block;
+    background: var(--note); color: var(--note-ink);
+    border-radius: 6px; padding: 1px 8px;
+    font-size: 11px; font-weight: 700; margin-right: 6px;
+  }
+
+  /* phone elements */
+  .ph-head { padding: 14px 16px 8px; }
+  .ph-hi { font-size: 12px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; }
+  .ph-hi-name { font-size: 18px; font-weight: 800; color: var(--ink); margin-top: 2px; }
+
+  .ph-tile {
+    margin: 4px 16px 12px;
+    border-radius: 16px; padding: 14px;
+    background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%);
+    color: #fff;
+    box-shadow: 0 8px 18px rgba(14,165,233,0.25);
+  }
+  .ph-tile .lbl { font-size: 11px; opacity: 0.85; text-transform: uppercase; font-weight: 700; letter-spacing: 0.7px; }
+  .ph-tile .num { font-size: 40px; font-weight: 900; line-height: 1; margin: 4px 0; font-variant-numeric: tabular-nums; }
+  .ph-tile .delta { font-size: 12px; font-weight: 700; opacity: 0.95; }
+  .ph-tile .band {
+    margin-top: 8px;
+    height: 6px; border-radius: 3px;
+    background: rgba(255,255,255,0.25); overflow: hidden;
+  }
+  .ph-tile .band > i { display: block; height: 100%; background: #fff; border-radius: 3px; }
+  .ph-tile .band-lbl { font-size: 11px; margin-top: 4px; opacity: 0.95; font-weight: 700; }
+
+  .ph-section-lbl {
+    padding: 12px 16px 6px;
+    font-size: 11px; color: var(--muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px;
+  }
+
+  .ph-card {
+    margin: 0 16px 8px;
+    background: #fff; border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px;
+  }
+  .ph-card .row { display: flex; justify-content: space-between; align-items: flex-start; }
+  .ph-card .day { font-size: 14px; font-weight: 800; color: var(--ink); }
+  .ph-card .meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .ph-card .pts { font-size: 13px; font-weight: 800; color: var(--sky-deep); font-variant-numeric: tabular-nums; }
+  .ph-card .pb { font-size: 12px; color: var(--good); font-weight: 700; margin-top: 6px; }
+  .ph-card .pb b { background: var(--good-bg); color: #065f46; padding: 1px 6px; border-radius: 4px; font-size: 11px; margin-right: 4px; }
+
+  .ph-milestone {
+    margin: 0 16px 8px;
+    border-radius: 14px;
+    padding: 14px;
+    color: #fff;
+  }
+  .ph-milestone.streak { background: linear-gradient(135deg, #f59e0b, #ef4444); }
+  .ph-milestone.distance { background: linear-gradient(135deg, #8b5cf6, #ec4899); }
+  .ph-milestone h4 { font-size: 12px; opacity: 0.95; margin: 0 0 4px; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 800; }
+  .ph-milestone .big { font-size: 22px; font-weight: 900; }
+  .ph-milestone .sub { font-size: 12px; opacity: 0.9; margin-top: 2px; }
+
+  /* Analytics screen */
+  .ph-back { padding: 10px 16px; font-size: 13px; color: var(--sky); font-weight: 700; }
+  .ph-h2 { padding: 4px 16px 8px; font-size: 14px; font-weight: 800; }
+  .ph-chart {
+    margin: 0 16px 12px;
+    background: #fff; border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px;
+  }
+  .ph-chart .legend { display: flex; gap: 10px; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .ph-chart .legend .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--sky); margin-right: 4px; }
+  .ph-chart svg { width: 100%; height: 120px; display: block; }
+  .ph-chart .nums {
+    display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 10px;
+    font-size: 11px; color: var(--muted);
+  }
+  .ph-chart .nums b { display: block; font-size: 15px; color: var(--ink); font-weight: 800; }
+
+  .ph-list { margin: 0 16px 12px; background: #fff; border: 1px solid var(--line); border-radius: 12px; }
+  .ph-list .item { display: flex; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .ph-list .item:last-child { border-bottom: none; }
+  .ph-list .item .when { font-size: 10px; color: var(--good); text-transform: uppercase; font-weight: 700; }
+  .ph-list .item b { font-variant-numeric: tabular-nums; }
+
+  .ph-balance { margin: 0 16px 12px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+  .ph-balance .row { display: grid; grid-template-columns: 40px 1fr 32px; align-items: center; gap: 8px; padding: 4px 0; font-size: 12px; }
+  .ph-balance .bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+  .ph-balance .bar > i { display: block; height: 100%; background: var(--sky); border-radius: 4px; }
+  .ph-balance .pct { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .ph-toggle { margin: 0 16px 24px; padding: 12px; text-align: center; border: 1px dashed var(--line); border-radius: 12px; color: var(--sky); font-weight: 700; font-size: 13px; }
+
+  /* Onboarding screen */
+  .ph-on-title { padding: 24px 24px 6px; font-size: 22px; font-weight: 800; line-height: 1.25; }
+  .ph-on-sub { padding: 0 24px 22px; color: var(--muted); font-size: 14px; }
+  .ph-on-label { padding: 0 24px 6px; font-size: 11px; color: var(--muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; }
+  .ph-on-row { padding: 0 24px 18px; }
+  .ph-on-input { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px; font-size: 16px; }
+  .ph-on-pillrow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ph-on-pillrow.three { grid-template-columns: 1fr 1fr 1fr; }
+  .ph-pill { padding: 12px 8px; border: 1px solid var(--line); border-radius: 12px; background: #fff; text-align: center; font-weight: 700; font-size: 13px; color: var(--ink); }
+  .ph-pill.active { background: var(--sky); border-color: var(--sky); color: #fff; }
+  .ph-on-cta { margin: 16px 24px; padding: 14px; background: var(--sky); color: #fff; text-align: center; border-radius: 12px; font-weight: 800; font-size: 15px; }
+
+  /* PB toast preview */
+  .toast {
+    margin: 16px;
+    border-radius: 14px;
+    padding: 16px;
+    background: linear-gradient(135deg, #fbbf24, #f97316);
+    color: #fff;
+    box-shadow: 0 12px 24px rgba(249,115,22,0.3);
+  }
+  .toast .emoji { font-size: 38px; }
+  .toast h4 { margin: 8px 0 4px; font-size: 18px; }
+  .toast p { margin: 0; opacity: 0.95; font-size: 13px; }
+  .toast .small { margin-top: 6px; font-size: 12px; opacity: 0.85; }
+
+  .legend-box {
+    background: #fff; border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 16px; margin-bottom: 16px;
+  }
+  .legend-box h2 { margin: 0 0 6px; font-size: 14px; color: var(--ink); }
+  .legend-box p { margin: 0; color: var(--muted); font-size: 13px; }
+
+  table.fina-bands { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px; }
+  table.fina-bands td { padding: 4px 0; border-bottom: 1px dashed var(--line); }
+  table.fina-bands td:first-child { font-weight: 800; color: var(--ink); width: 92px; }
+  table.fina-bands td:last-child { color: var(--muted); }
+
+  @media (max-width: 760px) {
+    .screen.active { grid-template-columns: 1fr; }
+    .phone { position: relative; top: 0; margin: 0 auto; }
+  }
+</style>
+<div class="wrap">
+  <h1>SwimBuddy — Home feed + Analytics mockup</h1>
+  <p class="subtitle">Three screens, annotated. Click the tabs to switch. The phone frames on the left are the actual UI. The notes on the right explain <em>why</em> each element exists.</p>
+
+  <nav class="tabs">
+    <button data-tab="home" class="active">📱 Home (feed)</button>
+    <button data-tab="analytics">📊 Analytics</button>
+    <button data-tab="onboarding">🚪 Onboarding</button>
+    <button data-tab="toast">🏆 PB toast</button>
+  </nav>
+
+  <!-- ─────────────────────────── HOME ─────────────────────────── -->
+  <section class="screen active" data-screen="home">
+    <div class="phone">
+      <div class="device-status">SwimBuddy</div>
+      <div class="ph-head">
+        <div class="ph-hi">Hi</div>
+        <div class="ph-hi-name">Suppo</div>
+      </div>
+
+      <div class="ph-tile">
+        <div class="lbl">FINA Points · this month</div>
+        <div class="num">562</div>
+        <div class="delta">▲ +24 vs last month</div>
+        <div class="band"><i style="width:56%"></i></div>
+        <div class="band-lbl">Solid age-group</div>
+      </div>
+
+      <div class="ph-section-lbl">This week</div>
+
+      <div class="ph-card">
+        <div class="row">
+          <div>
+            <div class="day">Wed · 4 drills</div>
+            <div class="meta">14 min · 50m fly &amp; back focus</div>
+          </div>
+          <div class="pts">575 pts</div>
+        </div>
+        <div class="pb"><b>🏆 PB!</b> 50 Free 36.20 · 0.4s faster</div>
+      </div>
+
+      <div class="ph-milestone streak">
+        <h4>Training streak</h4>
+        <div class="big">5 weeks running</div>
+        <div class="sub">Hasn't missed a Tuesday since May</div>
+      </div>
+
+      <div class="ph-card">
+        <div class="row">
+          <div>
+            <div class="day">Mon · 6 drills</div>
+            <div class="meta">22 min · IM set</div>
+          </div>
+          <div class="pts">538 pts</div>
+        </div>
+      </div>
+
+      <div class="ph-section-lbl">Last week</div>
+
+      <div class="ph-milestone distance">
+        <h4>Volume milestone</h4>
+        <div class="big">12.4 km swum this month</div>
+        <div class="sub">Your highest month so far</div>
+      </div>
+
+      <div class="ph-card">
+        <div class="row">
+          <div>
+            <div class="day">Sat · 8 drills</div>
+            <div class="meta">35 min · long aerobic</div>
+          </div>
+          <div class="pts">548 pts</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <div class="legend-box">
+        <h2>What you're looking at</h2>
+        <p>This is the new <strong>Home</strong>. It used to be a flat list of session cards. Now it's a <em>feed</em>: session cards + auto-generated milestone cards, with a pinned <strong>FINA Points</strong> tile at the top.</p>
+      </div>
+
+      <div class="note">
+        <h3><span class="pin">1</span> Pinned FINA Points tile</h3>
+        <p>This is the headline — one number that captures everything. <strong>562</strong> means roughly "solid age-group level." The arrow shows month-over-month delta.</p>
+        <p>FINA Points is a 0–1000 universal score used by serious coaches worldwide. It already adjusts for stroke, distance, gender, and pool type — so parents only have to track <em>one</em> number. See <code>swim-domain-research.md</code> for the full background.</p>
+        <table class="fina-bands">
+          <tr><td>900–1000</td><td>World / Olympic finalist</td></tr>
+          <tr><td>700–900</td><td>National-level junior</td></tr>
+          <tr><td>500–700</td><td>Strong regional age-grouper</td></tr>
+          <tr><td>300–500</td><td>Developing competitor</td></tr>
+        </table>
+      </div>
+
+      <div class="note">
+        <h3><span class="pin">2</span> Session cards now show points</h3>
+        <p>Each session card shows its <em>highest-scoring swim</em> in FINA Points, so you can see at a glance "Wednesday was a good day, Monday was a recovery day." The drill count and duration are still there.</p>
+      </div>
+
+      <div class="note">
+        <h3><span class="pin">3</span> PB tags inline</h3>
+        <p>If a session contained a personal best, the card carries a small "🏆 PB!" tag with the delta. Tapping the card opens the session for the full drill detail.</p>
+      </div>
+
+      <div class="note">
+        <h3><span class="pin">4</span> Milestone cards (auto-generated)</h3>
+        <p>These are <em>not</em> sessions — they're auto-generated celebrations. Streak cards, volume cards, "biggest improvement" cards. They're anchored to the day the milestone was achieved, so the feed stays honest chronologically.</p>
+        <p>Rule of thumb: at most one milestone card per day. They're priority-ranked (PB &gt; big delta &gt; streak &gt; distance) so we never have a "wall of confetti."</p>
+      </div>
+
+      <div class="note">
+        <h3><span class="pin">5</span> Empty / cold-start state (not pictured)</h3>
+        <p>For a new user with 0–2 sessions, the feed shows a "Log 3 sessions to start seeing your FINA trend" placeholder instead of an empty wall. After session 3, the tile activates.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────── ANALYTICS ─────────────────────────── -->
+  <section class="screen" data-screen="analytics">
+    <div class="phone">
+      <div class="device-status">SwimBuddy</div>
+      <div class="ph-back">◀ Analytics</div>
+      <div class="ph-h2">FINA Points · last 12 weeks</div>
+
+      <div class="ph-chart">
+        <div class="legend"><span><span class="swatch"></span>Best score per week</span></div>
+        <svg viewBox="0 0 300 120" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="grad" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="#0ea5e9" stop-opacity="0.4"/>
+              <stop offset="100%" stop-color="#0ea5e9" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <polygon fill="url(#grad)" points="0,95 25,80 50,90 75,72 100,75 125,60 150,68 175,55 200,40 225,48 250,30 275,38 300,25 300,120 0,120"/>
+          <polyline fill="none" stroke="#0ea5e9" stroke-width="2.5" points="0,95 25,80 50,90 75,72 100,75 125,60 150,68 175,55 200,40 225,48 250,30 275,38 300,25"/>
+          <circle cx="300" cy="25" r="4" fill="#0ea5e9"/>
+        </svg>
+        <div class="nums">
+          <div>Avg <b>545</b></div>
+          <div>Best <b>591</b></div>
+          <div>▲ +47 <b style="color:#10b981">since week 1</b></div>
+        </div>
+      </div>
+
+      <div class="ph-section-lbl">Personal bests · this season</div>
+      <div class="ph-list">
+        <div class="item"><div><b>50 Free</b><div class="when">PB this week</div></div><div><b>38.20</b></div></div>
+        <div class="item"><div><b>100 Free</b></div><div><b>1:24.50</b></div></div>
+        <div class="item"><div><b>50 Back</b></div><div><b>45.10</b></div></div>
+        <div class="item"><div><b>100 IM</b><div class="when">PB this week</div></div><div><b>1:32.00</b></div></div>
+      </div>
+
+      <div class="ph-section-lbl">Stroke balance · last 30 days</div>
+      <div class="ph-balance">
+        <div class="row"><span>Fly</span><div class="bar"><i style="width:18%; background:#f59e0b"></i></div><span class="pct">18%</span></div>
+        <div class="row"><span>Back</span><div class="bar"><i style="width:35%; background:#10b981"></i></div><span class="pct">35%</span></div>
+        <div class="row"><span>Breast</span><div class="bar"><i style="width:15%; background:#8b5cf6"></i></div><span class="pct">15%</span></div>
+        <div class="row"><span>Free</span><div class="bar"><i style="width:32%; background:#3b82f6"></i></div><span class="pct">32%</span></div>
+      </div>
+
+      <div class="ph-toggle">⚙ Show advanced metrics (CSS, velocity, AG context)</div>
+    </div>
+
+    <div class="notes">
+      <div class="legend-box">
+        <h2>Analytics tab — the "study" room</h2>
+        <p>Where parents go once a week (or coaches go after every session). Replaces the underused Explore tab. Three sections by default, with an "Advanced" toggle for coach-grade stuff.</p>
+      </div>
+
+      <div class="note">
+        <h3><span class="pin">1</span> FINA Points trend</h3>
+        <p>The single most important chart. One line: best FINA score per week. Filled area underneath for visual weight. The dot on the right is the most recent week.</p>
+        <p>Below the chart: average, best, and the cumulative delta. "▲ +47 since week 1" is the answer to "are we getting better?" — yes, by 47 FINA Points across 12 weeks. That's substantial.</p>
+      </div>
+
+      <div class="note">
+        <h3><span class="pin">2</span> Personal bests table</h3>
+        <p>One row per event the swimmer has done this season. PBs from the last 7 days carry a green "PB this week" tag.</p>
+        <p>Tapping a row would (P3+) open the per-event detail with a time-series chart for that specific (stroke × distance).</p>
+      </div>
+
+      <div class="note">
+        <h3><span class="pin">3</span> Stroke balance</h3>
+        <p>What percentage of training volume was spent on each stroke. Coaches care about this a lot — kids under 14 should have roughly even distribution. A weak fly (only 18% here) hints at an avoidance pattern.</p>
+        <p>The bars are colour-coded the same as the stroke pills in DrillSheet, for visual consistency.</p>
+      </div>
+
+      <div class="note">
+        <h3><span class="pin">4</span> Advanced toggle (collapsed by default)</h3>
+        <p>Behind this sit coach-grade metrics: <strong>Critical Swim Speed</strong> (the pace you can sustain indefinitely, derived from any timed 200 + 400 effort), <strong>improvement velocity</strong> (slope of best times), and eventually <strong>age-group standards context</strong> ("you're 1.2s off the AA cut").</p>
+        <p>Parents shouldn't have to learn what CSS is. Coaches will spot it immediately.</p>
+      </div>
+
+      <div class="note">
+        <h3><span class="pin">5</span> What's deliberately missing</h3>
+        <p>No leaderboard, no peer comparison, no goal forecasting. All deferred to v2+. We can ship Analytics with just these three sections and a working FINA Points calculator.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────── ONBOARDING ─────────────────────────── -->
+  <section class="screen" data-screen="onboarding">
+    <div class="phone">
+      <div class="device-status">SwimBuddy</div>
+      <div class="ph-on-title">First, a quick<br/>setup</div>
+      <div class="ph-on-sub">So we can score your swims correctly. About 10 seconds.</div>
+
+      <div class="ph-on-label">Birth year</div>
+      <div class="ph-on-row"><div class="ph-on-input">2014</div></div>
+
+      <div class="ph-on-label">Gender</div>
+      <div class="ph-on-row">
+        <div class="ph-on-pillrow">
+          <div class="ph-pill active">Female</div>
+          <div class="ph-pill">Male</div>
+        </div>
+      </div>
+
+      <div class="ph-on-label">Usual pool</div>
+      <div class="ph-on-row">
+        <div class="ph-on-pillrow three">
+          <div class="ph-pill">50m</div>
+          <div class="ph-pill active">25m</div>
+          <div class="ph-pill">25 yd</div>
+        </div>
+      </div>
+
+      <div class="ph-on-cta">Continue</div>
+    </div>
+
+    <div class="notes">
+      <div class="legend-box">
+        <h2>One-time onboarding</h2>
+        <p>FINA Points needs <strong>gender</strong> and <strong>pool type</strong> to be accurate. Birth year is for future age-group features (P5+). This flow appears once, after first sign-in — or when the user first taps the FINA tile and we realise we don't have these.</p>
+      </div>
+
+      <div class="note">
+        <h3><span class="pin">1</span> Why we ask</h3>
+        <p>Without gender, we can't pick the right FINA base-time table — male and female world records are different, so the scoring scale differs. Without pool type, a 50 free in a 25m pool gets scored against the wrong world record (the 50m-pool one).</p>
+        <p>Birth year is optional v1 (FINA Points doesn't need it), but we collect it now so age-group features in v2 don't require a second onboarding.</p>
+      </div>
+
+      <div class="note">
+        <h3><span class="pin">2</span> Friction budget</h3>
+        <p>Three fields, pre-filled where we can guess (default pool guess based on locale). Should take ~10 seconds. Anything more and we lose users at the front door.</p>
+      </div>
+
+      <div class="note">
+        <h3><span class="pin">3</span> What if they skip it?</h3>
+        <p>The FINA tile on Home shows "Set up to see your score" with a tap-to-complete CTA. Sessions still log normally; just no points until the profile is filled.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────── PB TOAST ─────────────────────────── -->
+  <section class="screen" data-screen="toast">
+    <div class="phone">
+      <div class="device-status">SwimBuddy</div>
+      <div class="ph-head">
+        <div class="ph-hi">Drill saved</div>
+        <div class="ph-hi-name">Wednesday session</div>
+      </div>
+
+      <div class="toast">
+        <div class="emoji">🏆</div>
+        <h4>New PB!</h4>
+        <p>50 Free — 36.20 · 0.40s faster than your previous best</p>
+        <div class="small">Worth 575 FINA Points. ▲ 28 vs last best.</div>
+      </div>
+
+      <div class="ph-section-lbl" style="padding-top:0">Today</div>
+      <div class="ph-card">
+        <div class="row">
+          <div>
+            <div class="day">25M Backstroke</div>
+            <div class="meta">18.45 · sprint</div>
+          </div>
+          <div class="pts">—</div>
+        </div>
+      </div>
+      <div class="ph-card">
+        <div class="row">
+          <div>
+            <div class="day">50M Freestyle</div>
+            <div class="meta">36.20 · race</div>
+          </div>
+          <div class="pts">575 pts</div>
+        </div>
+        <div class="pb"><b>🏆 PB!</b> 0.4s faster</div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <div class="legend-box">
+        <h2>The PB toast — the dopamine hit</h2>
+        <p>This is the smallest, highest-leverage piece of the whole feature. Fires at drill-save time when the new time beats the previous PB for that <code>(stroke × distance)</code>. Independent of the Analytics tab.</p>
+      </div>
+
+      <div class="note">
+        <h3><span class="pin">1</span> Where it appears</h3>
+        <p>Modal/banner on top of the session screen for ~4 seconds, dismissable. Confetti animation optional but encouraged. Reactions matter — this is the moment that hooks parents on opening the app.</p>
+      </div>
+
+      <div class="note">
+        <h3><span class="pin">2</span> The information stack</h3>
+        <p>Three layers, biggest to smallest:</p>
+        <ol style="margin:6px 0 0 18px; padding: 0; font-size: 14px;">
+          <li><strong>Headline emotion</strong> — "🏆 New PB!"</li>
+          <li><strong>The fact</strong> — "50 Free, 36.20, 0.40s faster"</li>
+          <li><strong>The context</strong> — "575 FINA Points, +28 vs prior" (educates parents about FINA without them noticing)</li>
+        </ol>
+      </div>
+
+      <div class="note">
+        <h3><span class="pin">3</span> Edge cases</h3>
+        <p>If 5 PBs happen at once (e.g. backfilling a meet result), <strong>one combined card</strong> with a list. Never five toasts queued.</p>
+        <p>For non-FINA-scoreable distances (e.g. 25m sprints), still show the PB toast — just omit the FINA context line.</p>
+      </div>
+
+      <div class="note">
+        <h3><span class="pin">4</span> Anti-pattern: don't over-fire</h3>
+        <p>Beating your own PB by 0.01s every other session would be annoying. Threshold: surface a toast only when delta &gt; 0.05s OR it's the first PB ever for that event.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+  document.querySelectorAll('nav.tabs button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('nav.tabs button').forEach((b) => b.classList.toggle('active', b === btn));
+      const t = btn.dataset.tab;
+      document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.dataset.screen === t));
+    });
+  });
+</script>
