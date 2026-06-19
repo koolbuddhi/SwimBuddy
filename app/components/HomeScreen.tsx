@@ -11,9 +11,11 @@ interface HomeScreenProps {
   refreshing?: boolean;
   /** When false, the + FAB is hidden — used when viewing a shared swimmer. */
   showFab?: boolean;
+  /** When true, empty-state copy reflects "they haven't logged anything", not "tap + to log". */
+  viewingShared?: boolean;
 }
 
-export function HomeScreen({ sessions, onOpenSession, onNewSession, onRefresh, refreshing, showFab = true }: HomeScreenProps) {
+export function HomeScreen({ sessions, onOpenSession, onNewSession, onRefresh, refreshing, showFab = true, viewingShared = false }: HomeScreenProps) {
   const sorted = [...sessions].sort((a, b) => b.date.localeCompare(a.date));
   const count = sessions.length;
   const countLabel = `${count} session${count !== 1 ? 's' : ''}`;
@@ -26,13 +28,20 @@ export function HomeScreen({ sessions, onOpenSession, onNewSession, onRefresh, r
     <View style={styles.container}>
       {count === 0 ? (
         <View testID="home-empty-state" style={styles.empty}>
-          <Text style={styles.emptyText}>No sessions yet</Text>
-          <Text style={styles.emptyHint}>Tap + to log your first session</Text>
+          <Text style={styles.emptyText}>
+            {viewingShared ? 'No sessions to show' : 'No sessions yet'}
+          </Text>
+          <Text style={styles.emptyHint}>
+            {viewingShared
+              ? "This swimmer hasn't logged anything yet."
+              : 'Tap + to log your first session'}
+          </Text>
         </View>
       ) : (
         <FlatList
           data={sorted}
           keyExtractor={(s) => s.id}
+          style={styles.listOuter}
           contentContainerStyle={styles.list}
           ListHeaderComponent={<Text style={styles.countLabel}>{countLabel}</Text>}
           renderItem={({ item: s }) => (
@@ -58,7 +67,10 @@ export function HomeScreen({ sessions, onOpenSession, onNewSession, onRefresh, r
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
+  // alignItems:center + maxWidth on the FlatList keeps cards from stretching
+  // edge-to-edge on wide browser viewports (desktop / tablet web).
+  container: { flex: 1, backgroundColor: '#f8fafc', alignItems: 'center' },
+  listOuter: { width: '100%', maxWidth: 720, flex: 1 },
   list: { padding: 16, paddingBottom: 80 },
   countLabel: { fontSize: 13, fontWeight: '600', color: '#64748b', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },

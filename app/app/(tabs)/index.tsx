@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { HomeScreen } from '../../components/HomeScreen';
 import { SwimmerSwitcher } from '../../components/SwimmerSwitcher';
+import { SharedViewBanner } from '../../components/SharedViewBanner';
 import { useSession } from '../../lib/SessionContext';
 import { useViewingPermission } from '../../lib/useViewingPermission';
 
@@ -25,6 +26,7 @@ export default function HomeRoute() {
   return (
     <View style={{ flex: 1 }}>
       <SwimmerSwitcher />
+      <SharedViewBanner />
       <HomeScreen
         sessions={sessions}
         onOpenSession={(id) => router.push(`/session/${id}`)}
@@ -32,6 +34,7 @@ export default function HomeRoute() {
         onRefresh={sync}
         refreshing={syncing}
         showFab={showFab}
+        viewingShared={permission !== 'owner'}
       />
     </View>
   );
