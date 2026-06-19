@@ -6,6 +6,7 @@ import { sessionToCSV } from '../lib/export/csv';
 import { sessionToJSON } from '../lib/export/json';
 import { sessionsToExcel } from '../lib/export/excel';
 import { shareCSV, shareBinary } from '../lib/export/share';
+import { SharingPanel } from './SharingPanel';
 
 export function SettingsScreen() {
   const { user, signOut } = useAuth();
@@ -87,6 +88,8 @@ export function SettingsScreen() {
           <Text style={styles.btnText}>{syncing ? 'Syncing…' : 'Sync now'}</Text>
         </Pressable>
       </View>
+
+      <SharingPanel />
 
       {/* Export section */}
       <View style={styles.section}>

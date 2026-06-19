@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SessionProvider } from '../lib/SessionContext';
+import { SharesProvider } from '../lib/SharesContext';
 import { AuthProvider, useAuth } from '../lib/auth';
 
 function AuthGate({ children }: { children: React.ReactNode }) {
@@ -26,6 +27,7 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <SessionProvider>
+        <SharesProvider>
         <AuthGate>
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(tabs)" />
@@ -34,6 +36,7 @@ export default function RootLayout() {
           </Stack>
           <StatusBar style="auto" />
         </AuthGate>
+        </SharesProvider>
       </SessionProvider>
     </AuthProvider>
   );

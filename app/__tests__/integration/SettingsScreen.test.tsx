@@ -4,6 +4,16 @@ import { SettingsScreen } from '../../components/SettingsScreen';
 
 jest.mock('../../lib/auth', () => ({ useAuth: jest.fn() }));
 jest.mock('../../lib/SessionContext', () => ({ useSession: jest.fn() }));
+// The Sharing panel renders inside Settings. Stub its hook so these tests
+// don't need the SharesProvider tree.
+jest.mock('../../lib/SharesContext', () => ({
+  useShares: () => ({
+    outgoing: [], incoming: [], acceptedIncoming: [],
+    loading: false, error: null,
+    refresh: jest.fn(), invite: jest.fn(), accept: jest.fn(),
+    decline: jest.fn(), revoke: jest.fn(),
+  }),
+}));
 
 const { useAuth: mockUseAuth } = jest.requireMock('../../lib/auth') as { useAuth: jest.Mock };
 const { useSession: mockUseSession } = jest.requireMock('../../lib/SessionContext') as { useSession: jest.Mock };
