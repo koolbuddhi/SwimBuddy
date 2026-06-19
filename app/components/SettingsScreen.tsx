@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../lib/auth';
 import { useSession } from '../lib/SessionContext';
 import { sessionToCSV } from '../lib/export/csv';
@@ -104,6 +104,20 @@ export function SettingsScreen() {
           <Text style={styles.btnText}>Export as JSON</Text>
         </Pressable>
       </View>
+
+      {/* Contact — quiet footer; not a section header */}
+      <View style={styles.contact} testID="settings-contact">
+        <Text style={styles.contactLine}>
+          Questions or feedback?{' '}
+          <Text
+            testID="settings-contact-email"
+            style={styles.contactLink}
+            onPress={() => Linking.openURL('mailto:buddhima@gmail.com?subject=SwimBuddy')}
+          >
+            buddhima@gmail.com
+          </Text>
+        </Text>
+      </View>
     </ScrollView>
   );
 }
@@ -128,4 +142,7 @@ const styles = StyleSheet.create({
   btn: { backgroundColor: '#f1f5f9', borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
   btnDisabled: { opacity: 0.5 },
   btnText: { fontSize: 14, fontWeight: '600', color: '#0f172a' },
+  contact: { paddingTop: 8, paddingBottom: 16, alignItems: 'center' },
+  contactLine: { fontSize: 12, color: '#94a3b8' },
+  contactLink: { color: '#0ea5e9', fontWeight: '600' },
 });

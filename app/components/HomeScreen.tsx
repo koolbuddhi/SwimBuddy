@@ -26,6 +26,17 @@ export function HomeScreen({ sessions, onOpenSession, onNewSession, onRefresh, r
 
   return (
     <View style={styles.container}>
+      {/* branding header — small, persistent identity at the top of Home */}
+      <View style={styles.brandHeader} testID="brand-header">
+        <View style={styles.brandIcon}>
+          <Text style={styles.brandIconText}>🏊</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.brandName}>SwimBuddy</Text>
+          <Text style={styles.brandTagline}>Log every swim. Watch them grow.</Text>
+        </View>
+      </View>
+
       {count === 0 ? (
         <View testID="home-empty-state" style={styles.empty}>
           <Text style={styles.emptyText}>
@@ -70,6 +81,18 @@ const styles = StyleSheet.create({
   // alignItems:center + maxWidth on the FlatList keeps cards from stretching
   // edge-to-edge on wide browser viewports (desktop / tablet web).
   container: { flex: 1, backgroundColor: '#f8fafc', alignItems: 'center' },
+  brandHeader: {
+    width: '100%', maxWidth: 720,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10,
+  },
+  brandIcon: {
+    width: 36, height: 36, borderRadius: 12,
+    backgroundColor: '#e0f2fe', alignItems: 'center', justifyContent: 'center',
+  },
+  brandIconText: { fontSize: 18 },
+  brandName: { fontSize: 17, fontWeight: '800', color: '#0f172a', letterSpacing: -0.3 },
+  brandTagline: { fontSize: 11, color: '#94a3b8', marginTop: 1, fontWeight: '600' },
   listOuter: { width: '100%', maxWidth: 720, flex: 1 },
   list: { padding: 16, paddingBottom: 80 },
   countLabel: { fontSize: 13, fontWeight: '600', color: '#64748b', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
