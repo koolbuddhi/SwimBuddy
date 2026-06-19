@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useAuth } from './auth';
 import { SharesClient, ShareError } from './sharesClient';
-import type { Share, SharePermission } from './types';
+import type { Share, SharePermission, SharesSnapshot } from './types';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_BASE ?? 'http://localhost:8787';
 
@@ -33,25 +33,36 @@ export function SharesProvider({ children }: { children: React.ReactNode }) {
     if (!user) {
       setOutgoing([]);
       setIncoming([]);
+      setError(null);
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      const snap = await client.list();
+      const snap: SharesSnapshot = await client.list();
       setOutgoing(snap.outgoing ?? []);
       setIncoming(snap.incoming ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      // 401 here usually means the cookie expired and the user needs to sign
+      // in again — surface that as a hint, not a stack-trace-y HTTP code.
+      if (e instanceof ShareError && e.code === 'unauthenticated') {
+        setError('Please sign in again to view your shares.');
+      } else if (e instanceof Error) {
+        setError(e.message);
+      } else {
+        setError(String(e));
+      }
     } finally {
       setLoading(false);
     }
   }, [client, user]);
 
-  // Refresh on sign-in.
+  // Refresh when the signed-in user changes (id-based so that a stable
+  // reference doesn't suppress the retry — bug seen in dev where a stale
+  // local user blocked the auto-fetch after re-signin).
   useEffect(() => {
     refresh();
-  }, [refresh]);
+  }, [user?.id, refresh]);
 
   const invite = useCallback(async (email: string, permission: SharePermission) => {
     const created = await client.invite(email, permission);

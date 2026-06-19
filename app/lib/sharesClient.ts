@@ -8,7 +8,8 @@ export class SharesClient {
       method: 'GET',
       credentials: 'include',
     });
-    if (!res.ok) throw new Error(`GET /shares failed: ${res.status}`);
+    if (res.status === 401) throw new ShareError('unauthenticated', 'Sign in required');
+    if (!res.ok) throw new ShareError('http', `Network error (${res.status})`);
     return (await res.json()) as SharesSnapshot;
   }
 
@@ -54,7 +55,7 @@ export class SharesClient {
   }
 }
 
-export type ShareErrorCode = 'not_found' | 'already_exists' | 'bad_request' | 'http';
+export type ShareErrorCode = 'not_found' | 'already_exists' | 'bad_request' | 'unauthenticated' | 'http';
 
 export class ShareError extends Error {
   constructor(public readonly code: ShareErrorCode, message: string) {
