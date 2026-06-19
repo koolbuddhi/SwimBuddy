@@ -36,9 +36,14 @@ export function SessionCard({ session, onClick }: SessionCardProps) {
       accessibilityLabel={`Session ${dateLabel}, ${drillLabel}`}
     >
       <View style={styles.topRow}>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.date}>{dateLabel}</Text>
           <Text style={styles.meta}>{drillLabel}{groupLabel}</Text>
+          {session.lastEditedByUserId && (
+            <Text testID="session-edited-badge" style={styles.editedBadge}>
+              ✎ edited by someone else
+            </Text>
+          )}
         </View>
 
         {drillCount > 0 && (
@@ -71,6 +76,7 @@ const styles = StyleSheet.create({
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   date: { fontSize: 15, fontWeight: '700', color: '#0f172a' },
   meta: { fontSize: 12, color: '#64748b', marginTop: 3 },
+  editedBadge: { fontSize: 11, color: '#9333ea', marginTop: 3, fontWeight: '600' },
   totalBlock: { alignItems: 'flex-end' },
   totalLabel: { fontSize: 10, color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
   totalTime: { fontSize: 17, fontWeight: '800', color: '#0f172a', fontVariant: ['tabular-nums'], marginTop: 2 },

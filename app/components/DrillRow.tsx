@@ -26,9 +26,11 @@ interface DrillRowProps {
   onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  /** When true, hides edit/delete buttons — used for read-only shared views. */
+  readOnly?: boolean;
 }
 
-export function DrillRow({ drill, selected, onToggle, onEdit, onDelete }: DrillRowProps) {
+export function DrillRow({ drill, selected, onToggle, onEdit, onDelete, readOnly }: DrillRowProps) {
   const stroke = STROKE_MAP[drill.strokeId] ?? STROKE_MAP.mixed;
   const strokeName = STROKE_NAMES[drill.strokeId] ?? 'Mixed';
 
@@ -66,24 +68,26 @@ export function DrillRow({ drill, selected, onToggle, onEdit, onDelete }: DrillR
       </Pressable>
 
       {/* action buttons — tinted zones with clear separation; full-row tap targets */}
-      <View style={styles.actions}>
-        <Pressable
-          testID="drill-edit-btn"
-          onPress={onEdit}
-          accessibilityLabel="Edit drill"
-          style={({ pressed }) => [styles.actionBtn, styles.actionEdit, pressed && styles.actionEditPressed]}
-        >
-          <Ionicons name="pencil" size={22} color="#0ea5e9" />
-        </Pressable>
-        <Pressable
-          testID="drill-delete-btn"
-          onPress={onDelete}
-          accessibilityLabel="Delete drill"
-          style={({ pressed }) => [styles.actionBtn, styles.actionDelete, pressed && styles.actionDeletePressed]}
-        >
-          <Ionicons name="trash-outline" size={22} color="#dc2626" />
-        </Pressable>
-      </View>
+      {!readOnly && (
+        <View style={styles.actions}>
+          <Pressable
+            testID="drill-edit-btn"
+            onPress={onEdit}
+            accessibilityLabel="Edit drill"
+            style={({ pressed }) => [styles.actionBtn, styles.actionEdit, pressed && styles.actionEditPressed]}
+          >
+            <Ionicons name="pencil" size={22} color="#0ea5e9" />
+          </Pressable>
+          <Pressable
+            testID="drill-delete-btn"
+            onPress={onDelete}
+            accessibilityLabel="Delete drill"
+            style={({ pressed }) => [styles.actionBtn, styles.actionDelete, pressed && styles.actionDeletePressed]}
+          >
+            <Ionicons name="trash-outline" size={22} color="#dc2626" />
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 }

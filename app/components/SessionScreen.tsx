@@ -8,6 +8,7 @@ import { GroupContainer } from './GroupContainer';
 import { SelectionBar } from './SelectionBar';
 import { relativeDate } from '../lib/time';
 import { useSession } from '../lib/SessionContext';
+import { useViewingPermission } from '../lib/useViewingPermission';
 import { sessionToExcel } from '../lib/export/excel';
 import { shareBinary } from '../lib/export/share';
 import type { Drill } from '../lib/types';
@@ -28,6 +29,8 @@ const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 export function SessionScreen({ sessionId, onBack }: SessionScreenProps) {
   const { sessions, sync, syncing, updateSession, addDrill, updateDrill, deleteDrill, deleteSession, saveGroup, ungroupGroup, removeGroup } =
     useSession();
+  const permission = useViewingPermission();
+  const readOnly = permission === 'read';
   const session = sessions.find((s) => s.id === sessionId);
 
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -143,7 +146,13 @@ export function SessionScreen({ sessionId, onBack }: SessionScreenProps) {
           <Ionicons name="chevron-back" size={18} color="#0ea5e9" />
           <Text style={styles.backBtnText}>Sessions</Text>
         </Pressable>
-        <Pressable testID="session-date-btn" onPress={openDateEditor} style={styles.titleBtn} accessibilityLabel="Change session date">
+        <Pressable
+          testID="session-date-btn"
+          onPress={readOnly ? undefined : openDateEditor}
+          disabled={readOnly}
+          style={styles.titleBtn}
+          accessibilityLabel={readOnly ? 'Session date (read-only)' : 'Change session date'}
+        >
           <Text style={styles.title}>{dateLabel}</Text>
           <Text style={styles.titleHint}>{session.date}</Text>
         </Pressable>
@@ -151,14 +160,16 @@ export function SessionScreen({ sessionId, onBack }: SessionScreenProps) {
           <Pressable testID="session-export-btn" onPress={handleExportExcel} style={styles.iconBtn} accessibilityLabel="Export to Excel" hitSlop={6}>
             <Ionicons name="download-outline" size={20} color="#0ea5e9" />
           </Pressable>
-          <Pressable testID="session-delete-btn" onPress={handleDeleteSession} style={styles.iconBtn} accessibilityLabel="Delete session" hitSlop={6}>
-            <Ionicons name="trash-outline" size={20} color="#dc2626" />
-          </Pressable>
+          {!readOnly && (
+            <Pressable testID="session-delete-btn" onPress={handleDeleteSession} style={styles.iconBtn} accessibilityLabel="Delete session" hitSlop={6}>
+              <Ionicons name="trash-outline" size={20} color="#dc2626" />
+            </Pressable>
+          )}
         </View>
       </View>
 
-      {/* selection bar (when drills selected) */}
-      {selectedIds.size > 0 && (
+      {/* selection bar (when drills selected; never on read-only views) */}
+      {!readOnly && selectedIds.size > 0 && (
         <SelectionBar
           selectedCount={selectedIds.size}
           totalCs={selectedCs}
@@ -192,6 +203,7 @@ export function SessionScreen({ sessionId, onBack }: SessionScreenProps) {
                 onRemoveGroup={() => removeGroup(sessionId, g.id)}
                 onEditDrill={handleEdit}
                 onDeleteDrill={(drillId) => handleDeleteDrill(drillId)}
+                readOnly={readOnly}
               />
             );
           })}
@@ -205,20 +217,23 @@ export function SessionScreen({ sessionId, onBack }: SessionScreenProps) {
               onToggle={() => toggleDrill(d.id)}
               onEdit={() => handleEdit(d)}
               onDelete={() => handleDeleteDrill(d.id)}
+              readOnly={readOnly}
             />
           ))}
         </ScrollView>
       )}
 
-      {/* FAB */}
-      <Pressable
-        testID="session-add-fab"
-        style={styles.fab}
-        onPress={openSheetForNewDrill}
-        accessibilityLabel="Add drill"
-      >
-        <Text style={styles.fabIcon}>+</Text>
-      </Pressable>
+      {/* FAB — hidden in read-only views (e.g. read-share) */}
+      {!readOnly && (
+        <Pressable
+          testID="session-add-fab"
+          style={styles.fab}
+          onPress={openSheetForNewDrill}
+          accessibilityLabel="Add drill"
+        >
+          <Text style={styles.fabIcon}>+</Text>
+        </Pressable>
+      )}
 
       {/* Drill entry sheet */}
       {sheetOpen && (

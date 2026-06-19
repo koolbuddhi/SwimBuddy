@@ -8,6 +8,11 @@ jest.mock('../../lib/SessionContext', () => ({
   useSession: jest.fn(),
 }));
 
+// Default permission stub — read/write tests opt-in by overriding this mock.
+jest.mock('../../lib/useViewingPermission', () => ({
+  useViewingPermission: () => 'owner',
+}));
+
 const { useSession: mockUseSession } = jest.requireMock('../../lib/SessionContext') as {
   useSession: jest.Mock;
 };

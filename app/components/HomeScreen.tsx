@@ -9,9 +9,11 @@ interface HomeScreenProps {
   onNewSession: () => void;
   onRefresh?: () => void;
   refreshing?: boolean;
+  /** When false, the + FAB is hidden — used when viewing a shared swimmer. */
+  showFab?: boolean;
 }
 
-export function HomeScreen({ sessions, onOpenSession, onNewSession, onRefresh, refreshing }: HomeScreenProps) {
+export function HomeScreen({ sessions, onOpenSession, onNewSession, onRefresh, refreshing, showFab = true }: HomeScreenProps) {
   const sorted = [...sessions].sort((a, b) => b.date.localeCompare(a.date));
   const count = sessions.length;
   const countLabel = `${count} session${count !== 1 ? 's' : ''}`;
@@ -40,15 +42,17 @@ export function HomeScreen({ sessions, onOpenSession, onNewSession, onRefresh, r
         />
       )}
 
-      <Pressable
-        testID="home-fab"
-        style={styles.fab}
-        onPress={onNewSession}
-        accessibilityLabel="New session"
-        accessibilityRole="button"
-      >
-        <Text style={styles.fabIcon}>+</Text>
-      </Pressable>
+      {showFab && (
+        <Pressable
+          testID="home-fab"
+          style={styles.fab}
+          onPress={onNewSession}
+          accessibilityLabel="New session"
+          accessibilityRole="button"
+        >
+          <Text style={styles.fabIcon}>+</Text>
+        </Pressable>
+      )}
     </View>
   );
 }

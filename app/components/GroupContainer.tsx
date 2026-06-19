@@ -11,6 +11,8 @@ interface GroupContainerProps {
   onRemoveGroup: () => void;
   onEditDrill: (drill: Drill) => void;
   onDeleteDrill: (drillId: string) => void;
+  /** When true, hides ungroup/remove/edit/delete actions. */
+  readOnly?: boolean;
 }
 
 export function GroupContainer({
@@ -20,6 +22,7 @@ export function GroupContainer({
   onRemoveGroup,
   onEditDrill,
   onDeleteDrill,
+  readOnly,
 }: GroupContainerProps) {
   const [expanded, setExpanded] = useState(true);
   const totalCs = drills.reduce((sum, d) => sum + d.timeCs, 0);
@@ -34,12 +37,16 @@ export function GroupContainer({
         </View>
         <View style={styles.headerRight}>
           <Text style={styles.total}>{csToTime(totalCs)}</Text>
-          <Pressable testID="group-ungroup-btn" onPress={onUngroup} style={styles.actionBtn} accessibilityLabel="Ungroup">
-            <Text style={styles.ungroupText}>Ungroup</Text>
-          </Pressable>
-          <Pressable testID="group-remove-btn" onPress={onRemoveGroup} style={styles.actionBtn} accessibilityLabel="Remove group">
-            <Text style={styles.removeText}>✕</Text>
-          </Pressable>
+          {!readOnly && (
+            <>
+              <Pressable testID="group-ungroup-btn" onPress={onUngroup} style={styles.actionBtn} accessibilityLabel="Ungroup">
+                <Text style={styles.ungroupText}>Ungroup</Text>
+              </Pressable>
+              <Pressable testID="group-remove-btn" onPress={onRemoveGroup} style={styles.actionBtn} accessibilityLabel="Remove group">
+                <Text style={styles.removeText}>✕</Text>
+              </Pressable>
+            </>
+          )}
         </View>
       </Pressable>
 
@@ -54,6 +61,7 @@ export function GroupContainer({
               onToggle={() => {}}
               onEdit={() => onEditDrill(d)}
               onDelete={() => onDeleteDrill(d.id)}
+              readOnly={readOnly}
             />
           ))}
         </View>
